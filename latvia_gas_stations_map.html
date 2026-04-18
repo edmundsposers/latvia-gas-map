@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Latvia Gas Stations – Competitive Map & Gap Analysis</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f8fafc; color: #1e293b; }
+#app { display: flex; height: 100vh; }
+#sidebar { width: 380px; min-width: 380px; background: #ffffff; overflow-y: auto; display: flex; flex-direction: column; border-right: 1px solid #e2e8f0; }
+#map { flex: 1; z-index: 1; }
+.logo-bar { padding: 20px; border-bottom: 1px solid #e2e8f0; }
+.logo-bar h1 { font-size: 18px; color: #0f172a; margin-bottom: 4px; }
+.logo-bar p { font-size: 12px; color: #64748b; }
+.section { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; }
+.section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 12px; }
+.brand-toggle { display: flex; align-items: center; padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 6px; transition: background 0.2s; }
+.brand-toggle:hover { background: #f1f5f9; }
+.brand-toggle .dot { width: 14px; height: 14px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+.brand-toggle .name { flex: 1; font-size: 14px; font-weight: 500; color: #1e293b; }
+.brand-toggle .count { font-size: 13px; color: #64748b; margin-right: 8px; }
+.brand-toggle .check { width: 20px; height: 20px; border: 2px solid #cbd5e1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.2s; }
+.brand-toggle.active .check { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+.stat-card { background: #f1f5f9; border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+.stat-card .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-card .value { font-size: 24px; font-weight: 700; color: #0f172a; margin-top: 2px; }
+.stat-card .sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+.stat-row { display: flex; gap: 8px; }
+.stat-row .stat-card { flex: 1; }
+.region-bar { display: flex; align-items: center; margin-bottom: 6px; }
+.region-bar .rname { width: 100px; font-size: 12px; color: #334155; flex-shrink: 0; }
+.region-bar .bar-wrap { flex: 1; display: flex; height: 18px; border-radius: 4px; overflow: hidden; background: #e2e8f0; }
+.region-bar .bar-seg { height: 100%; transition: width 0.3s; }
+.region-bar .rtotal { width: 30px; text-align: right; font-size: 12px; color: #64748b; margin-left: 6px; }
+.gap-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 3px solid; }
+.gap-item h3 { font-size: 14px; color: #0f172a; margin-bottom: 4px; }
+.gap-item p { font-size: 12px; color: #475569; line-height: 1.4; }
+.gap-item .tags { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+.gap-item .tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: #e2e8f0; color: #334155; }
+.gap-item .tag.opportunity { background: #dcfce7; color: #166534; }
+.legend-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; }
+.legend-item .ldot { width: 10px; height: 10px; border-radius: 50%; }
+.view-btns { display: flex; gap: 6px; margin-bottom: 12px; }
+.view-btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: transparent; color: #475569; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+.view-btn.active, .view-btn:hover { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+.heatmap-legend { margin-top: 12px; }
+.info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+.info-box p { font-size: 12px; color: #1e40af; line-height: 1.5; }
+@media (max-width: 900px) {
+  #app { flex-direction: column; }
+  #sidebar { width: 100%; min-width: auto; max-height: 45vh; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="sidebar">
+  <div class="logo-bar">
+    <h1>Latvia Gas Stations</h1>
+    <p>Competitive Map & Gap Analysis for Land Sales</p>
+  </div>
+
+  <div class="section">
+    <h2>Brands</h2>
+    <div id="brandToggles"></div>
+    <div class="legend-row" style="margin-top:10px;">
+      <div class="legend-item"><div class="ldot" style="background:#e74c3c"></div>Circle K</div>
+      <div class="legend-item"><div class="ldot" style="background:#2ecc71"></div>Neste</div>
+      <div class="legend-item"><div class="ldot" style="background:#f39c12"></div>Virši</div>
+      <div class="legend-item"><div class="ldot" style="background:#3498db"></div>Viada</div>
+      <div class="legend-item"><div class="ldot" style="background:#FF8C00"></div>KOOL</div>
+      <div class="legend-item"><div class="ldot" style="background:#8B4513"></div>Straujupīte</div>
+      <div class="legend-item"><div class="ldot" style="background:#9333ea;border:2px solid #9333ea;width:12px;height:12px;transform:rotate(45deg);border-radius:2px;"></div>Potenciālie gabali</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Potenciālie gabali</h2>
+    <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Jūsu zemes gabali — klikšķiniet, lai redzētu tuvākās stacijas un iespējas.</p>
+    <div id="landPlotsList"></div>
+  </div>
+
+  <div class="section">
+    <h2>Overview</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="label">Total Stations</div><div class="value" id="totalCount">0</div></div>
+      <div class="stat-card"><div class="label">Brands</div><div class="value">6</div></div>
+    </div>
+    <div id="brandStats"></div>
+  </div>
+
+  <div class="section">
+    <h2>Analysis View</h2>
+    <div class="view-btns">
+      <button class="view-btn active" data-view="all" onclick="setView('all')">All Stations</button>
+      <button class="view-btn" data-view="density" onclick="setView('density')">Density</button>
+      <button class="view-btn" data-view="gaps" onclick="setView('gaps')">Gaps</button>
+    </div>
+    <div class="info-box">
+      <p id="viewInfo">Showing all gas stations across Latvia. Click markers for details. Toggle brands in the panel above.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Regional Distribution</h2>
+    <div id="regionBars"></div>
+  </div>
+
+  <div class="section">
+    <h2>Gap Analysis & Opportunities</h2>
+    <p style="font-size:12px; color:#94a3b8; margin-bottom:8px;">Izvēlies brendu, lai redzētu kur tam trūkst klātbūtnes</p>
+    <div id="gapBrandFilter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
+    <div id="gapAnalysis"></div>
+  </div>
+</div>
+
+<div id="map"></div>
+</div>
+
+<script>
+// ============ STATION DATA ============
+// Compiled from public sources: OpenStreetMap, fuelo.net, official websites, 1188.lv, kontakti.lv
+const stations = [
+  // ===== CIRCLE K (85 stations) =====
+  // Rīga
+  {brand:"Circle K",name:"Circle K Ulmanis 1",addr:"Kārļa Ulmaņa gatve 110, Rīga",lat:56.9290,lng:24.0530,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Ulmanis 2",addr:"Kārļa Ulmaņa gatve 117, Rīga",lat:56.9270,lng:24.0490,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Ziepniekkalns",addr:"Ziepniekkalna iela 9, Rīga",lat:56.9180,lng:24.0560,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Imanta",addr:"Anniņmuižas bulvāris 25a, Rīga",lat:56.9460,lng:24.0050,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Pļavnieki 1",addr:"Katlakalna iela 16, Rīga",lat:56.9350,lng:24.1980,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Jugla",addr:"Juglas iela 2c, Rīga",lat:56.9780,lng:24.1680,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Purvciems",addr:"Gunāra Astras iela 17, Rīga",lat:56.9570,lng:24.1720,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Vienības gatve",addr:"Vienības gatve 105, Rīga",lat:56.9120,lng:24.0960,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Mežciems",addr:"Biķernieku iela 121a, Rīga",lat:56.9520,lng:24.1950,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Krasta 2",addr:"Krasta iela 93, Rīga",lat:56.9290,lng:24.1400,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Eksporta",addr:"Eksporta iela 1C, Rīga",lat:56.9577,lng:24.0936,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Ķengarags",addr:"Latgales iela 349b, Rīga",lat:56.9100,lng:24.1580,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Pērnavas",addr:"Pērnavas iela 7, Rīga",lat:56.9580,lng:24.1410,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Teika",addr:"Brīvības gatve 265, Rīga",lat:56.9714,lng:24.1618,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Sarkandaugava",addr:"Tvaika iela 2A, Rīga",lat:56.9850,lng:24.0900,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Kurbada",addr:"Kurbada iela 8, Rīga",lat:56.9470,lng:24.0994,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Deglava",addr:"Augusta Deglava iela 164C, Rīga",lat:56.9490,lng:24.1870,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Iļģuciems",addr:"Dzirciema iela 40, Rīga",lat:56.9440,lng:24.0530,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Kalnciems",addr:"Kalnciema iela 88, Rīga",lat:56.9340,lng:24.0666,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Valdemāra",addr:"Krišjāņa Valdemāra iela 104, Rīga",lat:56.9639,lng:24.0964,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Mīlgrāvis",addr:"Mīlgrāvja iela 10, Rīga",lat:57.0050,lng:24.0670,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Krustpils",addr:"Jāņavārtu iela 21, Rīga",lat:56.9380,lng:24.1550,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Botānika 2",addr:"Jūrmalas gatve 4, Rīga",lat:56.9450,lng:24.0780,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Mūkusala",addr:"Mūkusalas iela 75, Rīga",lat:56.9310,lng:24.1000,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Duntes",addr:"Duntes iela 15, Rīga",lat:56.9680,lng:24.1050,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Daugava",addr:"Krasta iela 47, Rīga",lat:56.9370,lng:24.1290,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Lido",addr:"Krasta iela 70, Rīga",lat:56.9310,lng:24.1360,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Pļavnieki 2",addr:"Lubānas iela 119A, Rīga",lat:56.9410,lng:24.1920,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Dzelzavas",addr:"Dzelzavas iela 14, Rīga",lat:56.9630,lng:24.1780,region:"Riga"},
+  {brand:"Circle K",name:"Circle K VEF",addr:"Brīvības gatve 203, Rīga",lat:56.9670,lng:24.1450,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Botānika",addr:"Jūrmalas gatve 5A, Rīga",lat:56.9445,lng:24.0790,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Brīvības/Cēsu",addr:"Brīvības iela 176A, Rīga",lat:56.9655,lng:24.1350,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Muitas",addr:"Muitas iela 4, Rīga",lat:56.9510,lng:24.1060,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Automāts Latgales",addr:"Latgales iela 324, Rīga",lat:56.9130,lng:24.1550,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Purvciems 2",addr:"Gunāra Astras iela 10, Rīga",lat:56.9573,lng:24.1710,region:"Riga"},
+  {brand:"Circle K",name:"Circle K Kaļķu",addr:"Vaļņu iela 11, Rīga",lat:56.9488,lng:24.1105,region:"Riga"},
+  // Pierīga / Jūrmala
+  {brand:"Circle K",name:"Circle K Jūrmala",addr:"Dubultu prospekts 42A, Jūrmala",lat:56.9600,lng:23.7760,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Automāts Jūrmala",addr:"Kalēju iela 4, Jūrmala",lat:56.9680,lng:23.7350,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Sloka",addr:"Ventspils šoseja 70 k-2, Jūrmala",lat:56.9540,lng:23.6930,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Ādaži",addr:"Vidlauku iela 1, Stapriņi, Ādažu nov.",lat:57.0780,lng:24.3230,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Mārupe",addr:"K. Ulmaņa gatve 127, Mārupe",lat:56.8970,lng:24.0440,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Salaspils",addr:"Nometņu iela 1, Salaspils",lat:56.8610,lng:24.3490,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Apvedceļš",addr:"Laimes, Ropažu nov.",lat:56.9760,lng:24.6150,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Berģi",addr:"Rīgas-Siguldas šoseja 1, Ropažu nov.",lat:57.0050,lng:24.2310,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Dreiliņi",addr:"Kuršu iela 1, Dreiliņi, Ropažu nov.",lat:56.9470,lng:24.2230,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Ķekava",addr:"Rīgas iela 107, Ķekava",lat:56.8300,lng:24.2320,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Daugmale",addr:"Augstceltne, Daugmale, Ķekavas nov.",lat:56.8380,lng:24.2550,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Saulkrasti 1",addr:"Kuršu Priedes, Saulkrastu nov.",lat:57.2550,lng:24.4030,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Saulkrasti 2",addr:"Kurši, Saulkrastu nov.",lat:57.2590,lng:24.4000,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Ogre",addr:"Rīgas iela 19, Ogre",lat:56.8170,lng:24.6140,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Tīnūži",addr:"Aplis, Tīnūžu pag., Ogres nov.",lat:56.8200,lng:24.7120,region:"Pieriga"},
+  {brand:"Circle K",name:"Circle K Lielvārde",addr:"Priežkalni 2, Jumpravas pag., Ogres nov.",lat:56.7450,lng:24.7450,region:"Pieriga"},
+  // Vidzeme
+  {brand:"Circle K",name:"Circle K Sigulda",addr:"Mazā Saules iela 2, Sigulda",lat:57.1560,lng:24.8380,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Automāts Sigulda",addr:"Vidzemes šoseja 12, Sigulda",lat:57.1510,lng:24.8520,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Krimulda",addr:"Cielavas, Ragana, Siguldas nov.",lat:57.1780,lng:24.7960,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Cēsis",addr:"Piebalgas iela 91, Cēsis",lat:57.3130,lng:25.2810,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Bērzkrogs",addr:"Saulrīti, Veselavas pag., Cēsu nov.",lat:57.2600,lng:25.4200,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Valmiera 1",addr:"Stacijas iela 29, Valmiera",lat:57.5370,lng:25.4270,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Valmiera 2",addr:"Ausekļa iela 26, Valmiera",lat:57.5410,lng:25.4180,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Smiltene",addr:"Dārza iela 36, Smiltene",lat:57.4250,lng:25.9030,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Limbaži",addr:"Cēsu iela 32, Limbaži",lat:57.5140,lng:24.7200,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Salacgrīva",addr:"Viļņu iela 4, Salacgrīva",lat:57.7520,lng:24.3580,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Madona",addr:"Cesvaines iela 10, Madona",lat:56.8520,lng:26.2170,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Gulbene",addr:"Brīvības iela 89A, Gulbene",lat:57.1720,lng:26.7530,region:"Vidzeme"},
+  {brand:"Circle K",name:"Circle K Automāts Ape",addr:"Dzirnavu iela 1b, Ape",lat:57.5390,lng:26.6930,region:"Vidzeme"},
+  // Kurzeme
+  {brand:"Circle K",name:"Circle K Liepāja 1",addr:"Esperanto iela 2/8, Liepāja",lat:56.5090,lng:21.0120,region:"Kurzeme"},
+  {brand:"Circle K",name:"Circle K Liepāja 2",addr:"Ganību iela 171, Liepāja",lat:56.5230,lng:21.0250,region:"Kurzeme"},
+  {brand:"Circle K",name:"Circle K Liepāja 3",addr:"Cukura iela 3, Liepāja",lat:56.5190,lng:21.0210,region:"Kurzeme"},
+  {brand:"Circle K",name:"Circle K Ventspils",addr:"Rūpniecības iela 4, Ventspils",lat:57.3950,lng:21.5710,region:"Kurzeme"},
+  {brand:"Circle K",name:"Circle K Kuldīga",addr:"Ganību iela 22, Kuldīga",lat:56.9680,lng:21.9680,region:"Kurzeme"},
+  {brand:"Circle K",name:"Circle K Saldus",addr:"Apvedceļš 11, Saldus",lat:56.6640,lng:22.4920,region:"Kurzeme"},
+  {brand:"Circle K",name:"Circle K Talsi",addr:"Jaunratnieki, Ģibuļu Pag., Talsu nov.",lat:57.2460,lng:22.5890,region:"Kurzeme"},
+  {brand:"Circle K",name:"Circle K Tukums",addr:"Meža iela 30, Tukums",lat:56.9680,lng:23.1570,region:"Kurzeme"},
+  {brand:"Circle K",name:"Circle K Kandava",addr:"Mazcuntes, Kandavas pag., Tukuma nov.",lat:57.0360,lng:22.7760,region:"Kurzeme"},
+  // Zemgale
+  {brand:"Circle K",name:"Circle K Jelgava 1",addr:"Brīvības bulvāris 1, Jelgava",lat:56.6520,lng:23.7230,region:"Zemgale"},
+  {brand:"Circle K",name:"Circle K Jelgava 2",addr:"Akadēmijas iela 20, Jelgava",lat:56.6490,lng:23.7280,region:"Zemgale"},
+  {brand:"Circle K",name:"Circle K Jelgava 3",addr:"Satiksmes iela 29, Jelgava",lat:56.6450,lng:23.7070,region:"Zemgale"},
+  {brand:"Circle K",name:"Circle K Jelgava 4",addr:"Miera iela 3B, Jelgava",lat:56.6550,lng:23.7150,region:"Zemgale"},
+  {brand:"Circle K",name:"Circle K Bauska",addr:"Zaļā iela 10, Bauska",lat:56.4080,lng:24.1960,region:"Zemgale"},
+  {brand:"Circle K",name:"Circle K Grenctāle",addr:"Ozolnieki, Ceraukstes pag., Bauskas nov.",lat:56.4850,lng:24.1500,region:"Zemgale"},
+  {brand:"Circle K",name:"Circle K Dobele",addr:"Jāņa Čakstes iela 1, Dobele",lat:56.6230,lng:23.2810,region:"Zemgale"},
+  {brand:"Circle K",name:"Circle K Jēkabpils",addr:"Rīgas iela 218g, Jēkabpils",lat:56.5010,lng:25.8720,region:"Zemgale"},
+  // Latgale
+  {brand:"Circle K",name:"Circle K Daugavpils 1",addr:"Ventspils iela 28, Daugavpils",lat:55.8810,lng:26.5160,region:"Latgale"},
+  {brand:"Circle K",name:"Circle K Daugavpils 2",addr:"Stacijas iela 97A, Daugavpils",lat:55.8690,lng:26.5290,region:"Latgale"},
+  {brand:"Circle K",name:"Circle K Rēzekne",addr:"Atbrīvošanas aleja 143b, Rēzekne",lat:56.5050,lng:27.3410,region:"Latgale"},
+
+  // ===== NESTE (77 stations) =====
+  // Rīga (24)
+  {brand:"Neste",name:"Neste Vienības gatve",addr:"Vienības gatve 144, Rīga",lat:56.9090,lng:24.1030,region:"Riga"},
+  {brand:"Neste",name:"Neste Latgales",addr:"Latgales iela 427b, Rīga",lat:56.9020,lng:24.1850,region:"Riga"},
+  {brand:"Neste",name:"Neste Brīvības",addr:"Brīvības gatve 253, Rīga",lat:56.9700,lng:24.1590,region:"Riga"},
+  {brand:"Neste",name:"Neste Deglava",addr:"A.Deglava iela 51a, Rīga",lat:56.9510,lng:24.1830,region:"Riga"},
+  {brand:"Neste",name:"Neste Dzirnavu",addr:"Dzirnavu iela 127, Rīga",lat:56.9550,lng:24.1270,region:"Riga"},
+  {brand:"Neste",name:"Neste Imanta I",addr:"Jūrmalas gatve 46b, Rīga",lat:56.9430,lng:24.0260,region:"Riga"},
+  {brand:"Neste",name:"Neste Imanta II",addr:"Kurzemes prospekts 15a, Rīga",lat:56.9500,lng:24.0100,region:"Riga"},
+  {brand:"Neste",name:"Neste Latgales DP",addr:"Latgales iela 448b, Rīga",lat:56.8990,lng:24.1900,region:"Riga"},
+  {brand:"Neste",name:"Neste Stārķu",addr:"Dzelzavas iela 5, Rīga",lat:56.9635,lng:24.1770,region:"Riga"},
+  {brand:"Neste",name:"Neste Jugla",addr:"Brīvības gatve 386, Rīga",lat:56.9882,lng:24.1862,region:"Riga"},
+  {brand:"Neste",name:"Neste Ulmaņa gatve",addr:"K. Ulmaņa gatve 84, Rīga",lat:56.9210,lng:24.0570,region:"Riga"},
+  {brand:"Neste",name:"Neste Senču",addr:"Senču iela 2b, Rīga",lat:56.9220,lng:24.1880,region:"Riga"},
+  {brand:"Neste",name:"Neste Ganību",addr:"Rankas iela 2, Rīga",lat:56.9600,lng:24.1480,region:"Riga"},
+  {brand:"Neste",name:"Neste Biķernieku",addr:"Biķernieku iela 115a, Rīga",lat:56.9510,lng:24.1960,region:"Riga"},
+  {brand:"Neste",name:"Neste Katoļu",addr:"Katoļu iela 4, Rīga",lat:56.9430,lng:24.1120,region:"Riga"},
+  {brand:"Neste",name:"Neste Lielirbes",addr:"Lielirbes iela 30, Rīga",lat:56.9360,lng:24.0400,region:"Riga"},
+  {brand:"Neste",name:"Neste Ģimnastikas",addr:"Vienības gatve 77, Rīga",lat:56.9160,lng:24.0920,region:"Riga"},
+  {brand:"Neste",name:"Neste Dzelzavas",addr:"Dzelzavas iela 60, Rīga",lat:56.9580,lng:24.1900,region:"Riga"},
+  {brand:"Neste",name:"Neste Lucavsala",addr:"Lucavsalas iela 1, Rīga",lat:56.9380,lng:24.0870,region:"Riga"},
+  {brand:"Neste",name:"Neste Daugavgrīvas",addr:"Kuldīgas iela 1, Rīga",lat:56.9490,lng:24.0380,region:"Riga"},
+  {brand:"Neste",name:"Neste Duntes",addr:"Dambja iela 10, Rīga",lat:56.9690,lng:24.1060,region:"Riga"},
+  {brand:"Neste",name:"Neste Lubānas",addr:"Lubānas iela 64, Rīga",lat:56.9440,lng:24.1790,region:"Riga"},
+  {brand:"Neste",name:"Neste Krasta",addr:"Krasta iela 68, Rīga",lat:56.9320,lng:24.1350,region:"Riga"},
+  {brand:"Neste",name:"Neste Skanstes",addr:"Skanstes iela 7, Rīga",lat:56.9620,lng:24.1090,region:"Riga"},
+  // Pierīga (13)
+  {brand:"Neste",name:"Neste Jūrmala",addr:"Viestura iela 21, Jūrmala",lat:56.9710,lng:23.8170,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Kauguri",addr:"Talsu šoseja 66, Jūrmala",lat:56.9630,lng:23.6680,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Salaspils",addr:"Zviedru iela 1c, Salaspils",lat:56.8640,lng:24.3520,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Ķekava",addr:"Rīgas iela 24, Ķekava",lat:56.8290,lng:24.2290,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Granīta DP",addr:"Granīta 26, Stopiņu pag., Ropažu nov.",lat:56.9340,lng:24.2150,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Mārupe",addr:"Upesgrīvas iela 1, Mārupe",lat:56.8930,lng:24.0380,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Ogre",addr:"Rīgas iela 11a, Ogre",lat:56.8180,lng:24.6160,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Olaine",addr:"Zemgales iela 1a, Olaine",lat:56.7860,lng:23.9350,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Ādaži",addr:"Rīgas gatve 5a, Ādaži",lat:57.0760,lng:24.3260,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Lorupe",addr:"Vidzemes šosejas 47.km, Inčukalna pag., Siguldas nov.",lat:57.1100,lng:24.6750,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Tīnūži",addr:"\"Baroni\", Tīnūžu pag., Ogres nov.",lat:56.8210,lng:24.7100,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Grenctāle DP",addr:"Grenctāle, Brunavas pag.",lat:56.4870,lng:24.1520,region:"Pieriga"},
+  {brand:"Neste",name:"Neste Vecumnieki",addr:"Rīgas iela 1, Vecumnieki",lat:56.6060,lng:24.2070,region:"Pieriga"},
+  // Vidzeme (12)
+  {brand:"Neste",name:"Neste Valmiera I",addr:"Rīgas iela 76, Valmiera",lat:57.5380,lng:25.4260,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Valmiera II",addr:"Mazā stacijas iela 14, Valmiera",lat:57.5370,lng:25.4290,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Valmiera III",addr:"\"Valdeko\", Valmiermuiža",lat:57.5320,lng:25.4100,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Cēsis I",addr:"Valmieras iela 4, Cēsis",lat:57.3130,lng:25.2770,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Cēsis II",addr:"Jāņa Poruka 49, Cēsis",lat:57.3100,lng:25.2850,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Bērzkrogs",addr:"\"Meijas\", Bērzkrogs, Veselavas pag., Cēsu nov.",lat:57.2610,lng:25.4210,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Sigulda",addr:"Vidzemes šoseja 4, Sigulda",lat:57.1530,lng:24.8400,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Limbaži",addr:"Stacijas iela 1, Limbaži",lat:57.5150,lng:24.7180,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Madona",addr:"Rūpniecības iela 47a, Madona",lat:56.8530,lng:26.2180,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Gulbene",addr:"Brīvības iela 68, Gulbene",lat:57.1730,lng:26.7540,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Alūksne",addr:"Pils iela 9c, Alūksne",lat:57.4240,lng:27.0470,region:"Vidzeme"},
+  {brand:"Neste",name:"Neste Ainaži",addr:"Valdemāra iela 82, Ainaži, Limbažu nov.",lat:57.8620,lng:24.3540,region:"Vidzeme"},
+  // Kurzeme (11)
+  {brand:"Neste",name:"Neste Liepāja I",addr:"Raiņa iela 2, Liepāja",lat:56.5100,lng:21.0110,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Liepāja II",addr:"Kārļa Zāles laukums 7, Liepāja",lat:56.5180,lng:21.0180,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Liepāja III",addr:"Pulvera iela 10b, Liepāja",lat:56.5050,lng:21.0040,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Ventspils",addr:"Lāčplēša iela 1, Ventspils",lat:57.3880,lng:21.5630,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Ventspils II",addr:"Kurzemes iela 2, Ventspils",lat:57.3910,lng:21.5850,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Kuldīga",addr:"Sūru iela 3, Kuldīga",lat:56.9680,lng:21.9680,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Kuldīga DP",addr:"Graudu iela 19, Kuldīga",lat:56.9660,lng:21.9720,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Talsi",addr:"Dundagas iela 1, Talsi",lat:57.2470,lng:22.5880,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Tukums",addr:"Kurzemes iela 7a, Tukums",lat:56.9660,lng:23.1550,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Tukums II",addr:"\"Lāsītes\", Smārdes pag., Tukuma nov.",lat:56.9800,lng:23.1200,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Saldus I",addr:"Apvedceļš 5, Saldus",lat:56.6640,lng:22.4930,region:"Kurzeme"},
+  {brand:"Neste",name:"Neste Saldus II",addr:"Jelgavas iela 3, Saldus",lat:56.6660,lng:22.4900,region:"Kurzeme"},
+  // Zemgale (10)
+  {brand:"Neste",name:"Neste Jelgava I",addr:"Loka maģistrāle 2a, Jelgava",lat:56.6560,lng:23.7310,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Jelgava II",addr:"Atmodas iela 21b, Jelgava",lat:56.6430,lng:23.7140,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Jelgava III",addr:"Miera iela 18, Jelgava",lat:56.6540,lng:23.7200,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Jelgava DP",addr:"Meiju ceļš 62, Jelgava",lat:56.6400,lng:23.7050,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Bauska I",addr:"Pionieru iela 2, Bauska",lat:56.4090,lng:24.1940,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Bauska II",addr:"Elejas iela 1, Bauska",lat:56.4070,lng:24.1890,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Iecava",addr:"\"Krustiņi\", Iecava, Bauskas nov.",lat:56.5960,lng:24.2020,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Annenieki",addr:"\"Gaismiņas\", Annenieku pag., Dobeles nov.",lat:56.6350,lng:23.3050,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Jēkabpils I",addr:"Vienības iela 1e, Jēkabpils",lat:56.5020,lng:25.8650,region:"Zemgale"},
+  {brand:"Neste",name:"Neste Jēkabpils II",addr:"Rīgas iela 247, Jēkabpils",lat:56.5030,lng:25.8690,region:"Zemgale"},
+  // Latgale (6)
+  {brand:"Neste",name:"Neste Daugavpils I",addr:"Smilšu iela 32, Daugavpils",lat:55.8750,lng:26.5230,region:"Latgale"},
+  {brand:"Neste",name:"Neste Daugavpils II",addr:"Dostojevska iela 6, Daugavpils",lat:55.8840,lng:26.5100,region:"Latgale"},
+  {brand:"Neste",name:"Neste Daugavpils III",addr:"Kraujas iela 5, Daugavpils",lat:55.8700,lng:26.5350,region:"Latgale"},
+  {brand:"Neste",name:"Neste Rēzekne",addr:"Atbrīvošanas aleja 146, Rēzekne",lat:56.5060,lng:27.3350,region:"Latgale"},
+  {brand:"Neste",name:"Neste Rēzekne DP",addr:"Atbrīvošanas aleja 167c, Rēzekne",lat:56.5080,lng:27.3420,region:"Latgale"},
+  {brand:"Neste",name:"Neste Līvāni",addr:"Rīgas iela 2a, Līvāni",lat:56.3570,lng:26.1730,region:"Latgale"},
+
+  // ===== VIRŠI (109 stations) =====
+  // Rīga region (24 stations)
+  {brand:"Virši",name:"Virši Ādaži",addr:"Rīgas gatve 45, Ādaži, LV-2140",lat:57.0753,lng:24.3217,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Apvedceļš",addr:"Jaunganģi, Ķekava",lat:56.8190,lng:24.2280,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Arkādijs",addr:"Uzvaras bulvāris 16, Rīga",lat:56.9470,lng:24.0920,region:"Riga"},
+  {brand:"Virši",name:"Virši Babīte",addr:"Virsvīdi, Spilve, Babītes pag., Mārupes nov., LV-2167",lat:56.9050,lng:23.9380,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Baloži",addr:"Cerības, Krustkalni, Ķekavas pag.",lat:56.8310,lng:24.2340,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Brīvība",addr:"Brīvības gatve 250, Rīga",lat:56.9690,lng:24.1580,region:"Riga"},
+  {brand:"Virši",name:"Virši Daugavgrīva",addr:"Daugavgrīvas iela 136a, Rīga",lat:56.9910,lng:24.0180,region:"Riga"},
+  {brand:"Virši",name:"Virši Granīta",addr:"Granīta iela 13a, Rumbula, Ropažu nov.",lat:56.8920,lng:24.2060,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Jugla",addr:"Prauliņi, Amatnieki, Garkalnes pag., Ropažu nov.",lat:56.9950,lng:24.2440,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Katrīnas dambis",addr:"Katrīnas dambis 35, Rīga",lat:56.9500,lng:24.0660,region:"Riga"},
+  {brand:"Virši",name:"Virši Lauva",addr:"Lauvas iela 10, Rīga",lat:56.9380,lng:24.1570,region:"Riga"},
+  {brand:"Virši",name:"Virši Lubāna",addr:"Lubānas iela 102a, Rīga",lat:56.9430,lng:24.1800,region:"Riga"},
+  {brand:"Virši",name:"Virši Mārupe",addr:"Ikri, Mārupes nov.",lat:56.8796,lng:24.0522,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Pērnava",addr:"Pērnavas iela 78, Rīga",lat:56.9590,lng:24.1510,region:"Riga"},
+  {brand:"Virši",name:"Virši Rumbula",addr:"Latgales iela 450K, Rīga",lat:56.8970,lng:24.1940,region:"Riga"},
+  {brand:"Virši",name:"Virši Salaspils 2",addr:"Līvzemes iela 40, Salaspils",lat:56.8570,lng:24.3560,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Sarkandaugava",addr:"Tvaika iela 3, Rīga",lat:56.9820,lng:24.1280,region:"Riga"},
+  {brand:"Virši",name:"Virši Satekle",addr:"Satekles iela 2, Rīga",lat:56.9530,lng:24.1240,region:"Riga"},
+  {brand:"Virši",name:"Virši Saurieši",addr:"Saurieši, Stopiņu pag., Ropažu nov.",lat:56.8730,lng:24.2880,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Teika",addr:"Brīvības gatve 297, Rīga",lat:56.9720,lng:24.1720,region:"Riga"},
+  {brand:"Virši",name:"Virši Torņkalns",addr:"Mārupes iela 57, Rīga",lat:56.9360,lng:24.0830,region:"Riga"},
+  {brand:"Virši",name:"Virši Ulmanis",addr:"Kārla Ulmana gatve 162, Rīga",lat:56.9040,lng:23.9970,region:"Riga"},
+  {brand:"Virši",name:"Virši Valdeki",addr:"Valdeku iela 35, Rīga",lat:56.9220,lng:24.0560,region:"Riga"},
+  {brand:"Virši",name:"Virši Viskaļi",addr:"Viskaļu iela 2a, Rīga",lat:56.9560,lng:24.1380,region:"Riga"},
+  // Vidzeme (25 stations)
+  {brand:"Virši",name:"Virši Alūksne",addr:"Rīgas iela 11, Alūksne, LV-4301",lat:57.4224,lng:27.0492,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Asni",addr:"Asni, Inčukalna pag., Siguldas nov., LV-2140",lat:57.0710,lng:24.7130,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Bebri",addr:"Degvielas uzpildes stacija, Vecbebri, Bebru pag., Aizkraukles nov., LV-5135",lat:56.6480,lng:25.9870,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Berģi",addr:"Brīvības gatve 481, Berģi, Garkalnes pag., Ropažu nov., LV-1024",lat:57.0020,lng:24.2150,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Cēsis",addr:"Raiņa iela 32, Cēsis, LV-4101",lat:57.3119,lng:25.2744,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Cēsis Saulrīti",addr:"Piebalgas 99A, Vaives pag., Cēsu nov., LV-4136",lat:57.3200,lng:25.3050,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Dzelmes",addr:"Dzelmeskrasti, Jumpravas pag., Ogres nov., LV-5022",lat:56.7580,lng:24.7640,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Gaisma",addr:"Gaismas iela 1, Aizkraukle, LV-5101",lat:56.6048,lng:25.2550,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Gulbene",addr:"Brīvības iela 97b, Gulbene, LV-4401",lat:57.1744,lng:26.7551,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Jēkabpils",addr:"Jāņa Akurātera iela 13, Jēkabpils, LV-5201",lat:56.4965,lng:25.8556,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Liezēre",addr:"Ceļmalas, Liezēres pag., Madonas nov., LV-4884",lat:56.9280,lng:26.0340,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Madona",addr:"Rūpniecības iela 49a, Madona, LV-4801",lat:56.8534,lng:26.2170,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Mālpils",addr:"Skulmes iela 5, Mālpils, LV-2152",lat:57.0071,lng:24.9555,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Ragana",addr:"Tirgus iela 4, Ragana, LV-2144",lat:57.1250,lng:24.7560,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Salacgrīva",addr:"Viļņu iela 18, Salacgrīva, Limbažu nov.",lat:57.7539,lng:24.3544,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Salaspils",addr:"Zviedru iela 1a, Salaspils, LV-2121",lat:56.8603,lng:24.3497,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Sigulda",addr:"Nītaures iela 22, Sigulda, Siguldas nov., LV-2150",lat:57.1535,lng:24.8514,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Skrīveri",addr:"Zemkopības institūts 2a, Skrīveri, LV-5125",lat:56.6452,lng:25.1208,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Smiltene",addr:"Stacijas iela 2, Smiltene, LV-4729",lat:57.4229,lng:25.9020,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Valka",addr:"Rūjienas iela 7, Valka, LV-4701",lat:57.7746,lng:26.0099,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Valka Lugaži",addr:"Rīgas iela 80, Valka, LV-4701",lat:57.7680,lng:26.0160,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Valmiera",addr:"Patversmes iela 12, Valmiera, LV-4201",lat:57.5384,lng:25.4263,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Valmiera 2",addr:"Deģļi, Brandeļi, Kocēnu pag., Valmieras nov., LV-4220",lat:57.5510,lng:25.3880,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Žagarkalns",addr:"Katrīnkalns-1, Drabešu pag., Cēsu nov., LV-4140",lat:57.3350,lng:25.2380,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Zilāni",addr:"Zilānu iela 145, Kūku pag., Jēkabpils nov., LV-5222",lat:56.5120,lng:25.9080,region:"Zemgale"},
+  // Latgale (11 stations)
+  {brand:"Virši",name:"Virši Aglona",addr:"Somersētas iela 11a, Aglona, LV-5304",lat:56.1315,lng:27.0076,region:"Latgale"},
+  {brand:"Virši",name:"Virši Balvi",addr:"Krasta iela 3, Balvi, LV-4501",lat:57.1308,lng:27.2647,region:"Latgale"},
+  {brand:"Virši",name:"Virši Daugavpils",addr:"Kārklu iela 22, Daugavpils",lat:55.8714,lng:26.5161,region:"Latgale"},
+  {brand:"Virši",name:"Virši Ilgas",addr:"Ilgas, Stropica, Naujenes pag., Augšdaugavas nov., LV-5458",lat:55.8580,lng:26.5650,region:"Latgale"},
+  {brand:"Virši",name:"Virši Kārsava",addr:"Passim, Malnavas pag., Kārsavas nov., LV-5717",lat:56.7844,lng:27.6886,region:"Latgale"},
+  {brand:"Virši",name:"Virši Krāslava",addr:"Rīgas iela 165a, Krāslava, LV-5601",lat:55.8943,lng:27.1676,region:"Latgale"},
+  {brand:"Virši",name:"Virši Krustpils",addr:"Varoņu iela 10, Jēkabpils, LV-5202",lat:56.5010,lng:25.8720,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Ludza",addr:"Bērzini-s, Cirmas pag., Ludzas nov., LV-5735",lat:56.5487,lng:27.7195,region:"Latgale"},
+  {brand:"Virši",name:"Virši Pļaviņas",addr:"Rīgas iela 31, Pļaviņas, Aizkraukles nov., LV-5120",lat:56.6179,lng:25.7241,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Preiļi",addr:"Jaunsaimnieki, Preiļu pag., LV-5301",lat:56.2933,lng:26.7246,region:"Latgale"},
+  {brand:"Virši",name:"Virši Rēzekne",addr:"Stacijas iela 13B, Rēzekne, LV-4601",lat:56.5099,lng:27.3337,region:"Latgale"},
+  // Zemgale (10 stations)
+  {brand:"Virši",name:"Virši Auce",addr:"Raiņa iela 30, Auce, Dobeles nov., LV-3708",lat:56.4594,lng:22.9005,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Grenctāle",addr:"DUS Grenctāle, Brunavas pag., Bauskas nov., LV-3907",lat:56.4350,lng:24.1580,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Jelgava",addr:"Lietuvas šoseja 70, Jelgava, LV-3008",lat:56.6511,lng:23.7213,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Kalna",addr:"Kalna iela 19, Aizkraukle, LV-5101",lat:56.6070,lng:25.2530,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Kekava",addr:"Kursīši, Ķekavas pag., Ķekavas nov., LV-2123",lat:56.8260,lng:24.2310,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Nākotne",addr:"DUS pie a/c Jelgava-Dobele 24,5. km, Glūdas pag., Jelgavas nov., LV-3040",lat:56.6380,lng:23.4920,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Olaine",addr:"Daces, Jaunolaine, Olaines nov., LV-2127",lat:56.7843,lng:23.9363,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Olaine 2",addr:"Ievalti, Jaunolaine, Olaines pag., Olaines nov., LV-2127",lat:56.7810,lng:23.9320,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Sērene",addr:"Kalngaļi, Sērenes pag., Aizkraukles nov., LV-5123",lat:56.5780,lng:25.3310,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Valle",addr:"Rīgas iela 2, Valle, Valles pag., Bauskas nov., LV-5106",lat:56.6290,lng:25.5640,region:"Zemgale"},
+  // Kurzeme (13 stations)
+  {brand:"Virši",name:"Virši Brocēni",addr:"Liepnieku iela 1, Brocēni, Saldus nov., LV-3851",lat:56.6812,lng:22.5746,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Cukurs",addr:"Cukura iela 29, Liepāja, LV-3414",lat:56.5190,lng:21.0210,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Ēdole",addr:"Dārza iela 7, Ēdole, Ēdoles pag., Kuldīgas nov., LV-3310",lat:56.9610,lng:21.6050,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Jūrkalne",addr:"Krastnieki, Jūrkalne, Jūrkalnes pag., Ventspils nov., LV-3626",lat:57.1470,lng:21.3720,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Kandava",addr:"Abavas iela 4, Kandava, LV-3120",lat:57.0363,lng:22.7693,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Kuldīga",addr:"Zirņu iela 20, Kuldīga",lat:56.9680,lng:21.9690,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Liepāja",addr:"Zemnieku iela 24, Liepāja, LV-3401",lat:56.5047,lng:21.0109,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Pūre",addr:"Daigones iela 13a, Pūre, LV-3124",lat:57.0380,lng:22.9159,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Skrunda",addr:"Ventas iela 3, Skrunda, LV-3326",lat:56.6741,lng:22.0129,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Tukums",addr:"Kurzemes iela 55, Tukums, LV-3101",lat:56.9669,lng:23.1528,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Tukums Valdaiši",addr:"Valdaiši, Smārdes pag., Tukuma nov., LV-3129",lat:56.9450,lng:23.1080,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Ugāle",addr:"Avenes, Ugāle, Ugāles pag., Ventspils nov., LV-3615",lat:57.2340,lng:21.8720,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Ventspils",addr:"Robežu iela 1, Ventspils, LV-3601",lat:57.3936,lng:21.5606,region:"Kurzeme"},
+
+  // Former Astarte stations (acquired by Virši)
+  // Kurzeme (3)
+  {brand:"Virši",name:"Virši Aizpute (Astarte)",addr:"Kalvenes iela 75, Aizpute, Dienvidkurzemes nov., LV-3456",lat:56.7168,lng:21.6013,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Roja (Astarte)",addr:"Selgas iela 70, Roja, Rojas pag., Talsu nov., LV-3264",lat:57.5037,lng:22.8081,region:"Kurzeme"},
+  {brand:"Virši",name:"Virši Tukums 2 (Astarte)",addr:"Kuldīgas iela 69, Tukums, Tukuma nov., LV-3104",lat:56.9669,lng:23.1390,region:"Kurzeme"},
+  // Pieriga (2)
+  {brand:"Virši",name:"Virši Baldone (Astarte)",addr:"Rīgas iela 2, Baldone, Ķekavas nov., LV-2125",lat:56.7432,lng:24.3978,region:"Pieriga"},
+  {brand:"Virši",name:"Virši Ķegums (Astarte)",addr:"Ķeguma prospekts 1A, Ķegums, Ogres nov., LV-5020",lat:56.7443,lng:24.7247,region:"Pieriga"},
+  // Vidzeme (5)
+  {brand:"Virši",name:"Virši Cesvaine (Astarte)",addr:"Stacijas iela 22, Cesvaine, Madonas nov., LV-4871",lat:56.9673,lng:26.3062,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Koknese (Astarte)",addr:"1905. gada iela 14A, Koknese, Aizkraukles nov., LV-5113",lat:56.6504,lng:25.4316,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Kusa (Astarte)",addr:"Dālderi, Kusa, Aronas pag., Madonas nov., LV-4847",lat:56.9020,lng:26.2530,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Limbaži (Astarte)",addr:"Meliorācijas iela 23, Limbaži, Limbažu nov., LV-4001",lat:57.5103,lng:24.7094,region:"Vidzeme"},
+  {brand:"Virši",name:"Virši Pļaviņas 2 (Astarte)",addr:"Oliņkalns, Stukmaņi, Klintaines pag., Aizkraukles nov., LV-5129",lat:56.6179,lng:25.7100,region:"Vidzeme"},
+  // Zemgale (14, including 3 Jelgava)
+  {brand:"Virši",name:"Virši Aknīste (Astarte)",addr:"Augšzemes iela 60, Aknīste, Jēkabpils nov., LV-5208",lat:56.1569,lng:25.7444,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Astartes Bāze (Astarte)",addr:"Astartes Bāze, Platones pag., Jelgavas nov., LV-3021",lat:56.5580,lng:23.5720,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Birži (Astarte)",addr:"Ceļtekas, Birži, Salas pag., Jēkabpils nov., LV-5214",lat:56.4910,lng:25.9670,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Brankstūri (Astarte)",addr:"Brankstūri, Cenu pag., Jelgavas nov., LV-3043",lat:56.6260,lng:23.7940,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Dobele (Astarte)",addr:"Brīvības iela 60, Dobele, Dobeles nov., LV-3701",lat:56.6249,lng:23.2828,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Eleja (Astarte)",addr:"Lietuvas iela 28, Eleja, Elejas pag., Jelgavas nov., LV-3023",lat:56.4159,lng:23.6953,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Iecava (Astarte)",addr:"Rīgas iela 2B, Iecava, Bauskas nov., LV-3913",lat:56.5985,lng:24.2010,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Jēkabpils 2 (Astarte)",addr:"Kļavu iela 4, Jēkabpils, Jēkabpils nov., LV-5201",lat:56.4965,lng:25.8700,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Tērvete (Astarte)",addr:"Runči, Tērvete, Tērvetes pag., Dobeles nov., LV-3730",lat:56.4818,lng:23.3854,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Tīreļi (Astarte)",addr:"Rīgas iela 3, Tīreļi, Valgundes pag., Jelgavas nov., LV-3017",lat:56.7060,lng:23.6530,region:"Zemgale"},
+  // Jelgava (3)
+  {brand:"Virši",name:"Virši Jelgava Dambja (Astarte)",addr:"Dambja iela 25, Jelgava, LV-3008",lat:56.6580,lng:23.7350,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Jelgava Lielā (Astarte)",addr:"Lielā iela 40, Jelgava, LV-3001",lat:56.6520,lng:23.7130,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Jelgava Rūpniecības (Astarte)",addr:"Rūpniecības iela 75A, Jelgava, LV-3008",lat:56.6440,lng:23.7280,region:"Zemgale"},
+  {brand:"Virši",name:"Virši Viesīte (Astarte)",addr:"Raiņa iela 60A, Viesīte, Jēkabpils nov., LV-5237",lat:56.3441,lng:25.5538,region:"Zemgale"},
+  // Latgale (2)
+  {brand:"Virši",name:"Virši Līvāni (Astarte)",addr:"Rīgas iela 312, Līvāni, Līvānu nov., LV-5316",lat:56.3561,lng:26.1769,region:"Latgale"},
+  {brand:"Virši",name:"Virši Višķi (Astarte)",addr:"Catlakši, Catlakši, Višķu pag., Augšdaugavas nov., LV-5481",lat:55.9710,lng:26.7380,region:"Latgale"},
+
+  // ===== VIADA (101 stations) =====
+  // Rīga (27 stations)
+  {brand:"Viada",name:"Viada Brīvības",addr:"Brīvības gatve 462, Rīga",lat:56.9950,lng:24.2100,region:"Riga"},
+  {brand:"Viada",name:"Viada Krasta 2",addr:"Krasta iela 78, Rīga",lat:56.9300,lng:24.1380,region:"Riga"},
+  {brand:"Viada",name:"Viada Vienības",addr:"Vienības gatve 162a, Rīga",lat:56.9060,lng:24.0990,region:"Riga"},
+  {brand:"Viada",name:"Viada Ziepniekkalns",addr:"Ziepniekkalna iela 20, Rīga",lat:56.9180,lng:24.0550,region:"Riga"},
+  {brand:"Viada",name:"Viada Latgales 1",addr:"Latgales iela 440, Rīga",lat:56.8980,lng:24.1880,region:"Riga"},
+  {brand:"Viada",name:"Viada Šampētera",addr:"Šampētera iela 180, Rīga",lat:56.9370,lng:24.0370,region:"Riga"},
+  {brand:"Viada",name:"Viada Buļļu",addr:"Buļļu iela 72A, Rīga",lat:56.9560,lng:24.0180,region:"Riga"},
+  {brand:"Viada",name:"Viada Kaudzīšu",addr:"Brāļu Kaudzīšu iela 29, Rīga",lat:56.9500,lng:24.1940,region:"Riga"},
+  {brand:"Viada",name:"Viada Dārzciema",addr:"Dārzciema iela 69, Rīga",lat:56.9420,lng:24.1720,region:"Riga"},
+  {brand:"Viada",name:"Viada Ķīšezers",addr:"Ķīšezera iela 31, Rīga",lat:56.9800,lng:24.0880,region:"Riga"},
+  {brand:"Viada",name:"Viada Granīta",addr:"Granīta iela 7a, Rīga",lat:56.9340,lng:24.2100,region:"Riga"},
+  {brand:"Viada",name:"Viada Mūkusalas 1",addr:"Mūkusalas iela 59, Rīga",lat:56.9290,lng:24.0960,region:"Riga"},
+  {brand:"Viada",name:"Viada Mūkusalas 2",addr:"Mūkusalas iela 78, Rīga",lat:56.9270,lng:24.0940,region:"Riga"},
+  {brand:"Viada",name:"Viada Vecmīlgrāvis",addr:"Emmas iela 45, Rīga",lat:57.0130,lng:24.0720,region:"Riga"},
+  {brand:"Viada",name:"Viada Krasta",addr:"Krasta iela 50, Rīga",lat:56.9360,lng:24.1300,region:"Riga"},
+  {brand:"Viada",name:"Viada Astras",addr:"G.Astras iela 7, Rīga",lat:56.9560,lng:24.1700,region:"Riga"},
+  {brand:"Viada",name:"Viada Dārzciema 2",addr:"Dārzciema iela 62, Rīga",lat:56.9430,lng:24.1710,region:"Riga"},
+  {brand:"Viada",name:"Viada Bolderāja",addr:"Gaigalas iela 19a, Rīga",lat:56.9470,lng:23.9780,region:"Riga"},
+  {brand:"Viada",name:"Viada Džutas",addr:"Džutas iela 16, Rīga",lat:56.9670,lng:24.1580,region:"Riga"},
+  {brand:"Viada",name:"Viada Apuzes",addr:"Apuzes iela 47, Rīga",lat:56.9380,lng:24.0300,region:"Riga"},
+  {brand:"Viada",name:"Viada Ulmaņa 2",addr:"K. Ulmaņa gatve 135, Rīga",lat:56.9230,lng:24.0450,region:"Riga"},
+  {brand:"Viada",name:"Viada Krūzes",addr:"Krūzes iela 53, Rīga",lat:56.9340,lng:24.0750,region:"Riga"},
+  {brand:"Viada",name:"Viada Latgales 2",addr:"Latgales iela 293A, Rīga",lat:56.9150,lng:24.1510,region:"Riga"},
+  {brand:"Viada",name:"Viada Jugla",addr:"Juglas iela 16C, Rīga",lat:56.9760,lng:24.1640,region:"Riga"},
+  {brand:"Viada",name:"Viada Anniņmuižas",addr:"Anniņmuižas bulvāris 75, Rīga",lat:56.9420,lng:24.0080,region:"Riga"},
+  {brand:"Viada",name:"ADUS Viada Saharova",addr:"Andreja Saharova iela 10, Rīga",lat:56.9390,lng:24.2020,region:"Riga"},
+  {brand:"Viada",name:"ADUS Viada Biķernieku",addr:"Vecā Biķernieku iela 1, Rīga",lat:56.9480,lng:24.1990,region:"Riga"},
+  {brand:"Viada",name:"ADUS Viada Ulmaņa",addr:"K. Ulmaņa gatve 67, Rīga",lat:56.9350,lng:24.0830,region:"Riga"},
+  {brand:"Viada",name:"ADUS Viada Valgales",addr:"Valgales iela 1, Rīga",lat:56.9360,lng:24.0240,region:"Riga"},
+  {brand:"Viada",name:"ADUS Viada Salaspils",addr:"Salaspils iela 4a, Rīga",lat:56.9270,lng:24.2080,region:"Riga"},
+  {brand:"Viada",name:"ADUS Viada Valdeķu",addr:"Valdeķu iela 34, Rīga",lat:56.9310,lng:24.0410,region:"Riga"},
+  // Pierīga (14 stations)
+  {brand:"Viada",name:"Viada Mellupi",addr:"Mellupi, Ķekavas pag., Ķekavas novads",lat:56.8520,lng:24.2180,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Ogre 2",addr:"Mežezera iela 1, Tīnūžu pag., Ogres nov.",lat:56.8200,lng:24.7050,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Suntaži",addr:"\"Ūsiņš\", Suntažu pag., Ogres nov.",lat:56.8850,lng:24.8260,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Glāžšķūnis",addr:"Glāžšķūnis, Rembates pag., Ķeguma nov.",lat:56.7360,lng:24.9340,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Ziemeri",addr:"\"Ziemeri\", Garkalnes pag., Ropažu novads",lat:57.0180,lng:24.3530,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Ādaži",addr:"Rīgas gatve 65, Ādaži",lat:57.0760,lng:24.3260,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Lubānas",addr:"Lubānas iela 150B, Dreiliņi, Ropažu nov.",lat:56.9410,lng:24.2160,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Ķekava",addr:"\"Mazsvilpji\", Ķekavas pag.",lat:56.8300,lng:24.2330,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Rumbula",addr:"Latgales iela 481, Rumbula, Ropažu nov.",lat:56.8900,lng:24.2000,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Lidosta",addr:"Dzirnieku iela 1, Lidosta, Mārupes novads",lat:56.9230,lng:24.0190,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Saulkrasti",addr:"\"Mazžvīguļi\", Saulkrastu nov.",lat:57.2570,lng:24.4020,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Skulte",addr:"\"Laiciemkursīši\", Skultes pag., Limbažu nov.",lat:57.1680,lng:24.2610,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Ogre",addr:"Rīgas iela 116, Ogre",lat:56.8170,lng:24.6140,region:"Pieriga"},
+  {brand:"Viada",name:"Viada Kauguri",addr:"Brikšķu iela 2, Kaugurciems, Jūrmala",lat:56.9630,lng:23.6500,region:"Pieriga"},
+  // Vidzeme (10 stations)
+  {brand:"Viada",name:"Viada Straupe",addr:"\"Aleta\", Straupe, Cēsu novads",lat:57.3450,lng:24.9510,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Sigulda",addr:"\"Lorēni\", Siguldas pag., Siguldas nov.",lat:57.1570,lng:24.8390,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Limbaži",addr:"Cēsu iela 32, Limbaži",lat:57.5140,lng:24.7200,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Salacgrīva",addr:"Vidzemes iela 29, Salacgrīva",lat:57.7520,lng:24.3580,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Cēsis",addr:"Valmieras iela 12, Cēsis",lat:57.3140,lng:25.2800,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Vecpiebalga",addr:"\"Zvirbulīši\", Vecpiebalga, Cēsu nov.",lat:57.0610,lng:25.8180,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Valmiera 2",addr:"\"Brīvnieki\", Kauguru pag., Valmieras nov.",lat:57.5450,lng:25.4060,region:"Vidzeme"},
+  {brand:"Viada",name:"ADUS Viada Valmiera 1",addr:"Matīšu šoseja 3, Valmiera",lat:57.5430,lng:25.4030,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Madona",addr:"Rūpniecības iela 19, Madona",lat:56.8540,lng:26.2180,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Alūksne",addr:"Gulbenes iela 1C, Alūksne",lat:57.4230,lng:27.0480,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Gulbene",addr:"Baložu iela 19, Gulbene",lat:57.1740,lng:26.7550,region:"Vidzeme"},
+  {brand:"Viada",name:"Viada Ērgļi",addr:"Piebalgas iela 79, Ērgļi, Madonas nov.",lat:56.8980,lng:25.6820,region:"Vidzeme"},
+  // Kurzeme (12 stations)
+  {brand:"Viada",name:"Viada Grobiņa 2",addr:"\"Zālītes\", Grobiņas pag., Dienvidkurzemes nov.",lat:56.5320,lng:21.1720,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Grobiņa",addr:"Lielā iela 8, Grobiņa",lat:56.5350,lng:21.1690,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Dundaga",addr:"Talsu iela 21, Dundaga",lat:57.5050,lng:22.3500,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Liepāja 1",addr:"Krūmu iela 56, Liepāja",lat:56.5150,lng:21.0080,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Liepāja 3",addr:"Ganību iela 180, Liepāja",lat:56.5270,lng:21.0350,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Liepāja 4",addr:"Kapsētas iela 24, Liepāja",lat:56.5100,lng:21.0190,region:"Kurzeme"},
+  {brand:"Viada",name:"ADUS Viada Liepāja 2",addr:"Zemnieku iela 58, Liepāja",lat:56.5120,lng:21.0150,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Nīca",addr:"\"Piebalgas\", Nīca",lat:56.3470,lng:21.0650,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Kuldīga",addr:"Graudu iela 9, Kuldīga",lat:56.9680,lng:21.9700,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Ventspils 1",addr:"Inženieru iela 2, Ventspils",lat:57.3890,lng:21.5620,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Ventspils 2",addr:"Kurzemes iela 59, Ventspils",lat:57.3830,lng:21.5780,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Tukums",addr:"Zemgales iela 25, Tukums",lat:56.9690,lng:23.1580,region:"Kurzeme"},
+  {brand:"Viada",name:"Viada Brocēni",addr:"\"Skorpions\", Brocēni, Saldus nov.",lat:56.6810,lng:22.5750,region:"Kurzeme"},
+  // Zemgale (13 stations)
+  {brand:"Viada",name:"Viada Jelgava 3",addr:"Rīgas iela 56, Jelgava",lat:56.6540,lng:23.7350,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Jelgava 4",addr:"Lietuvas šoseja 2B, Jelgava",lat:56.6380,lng:23.7030,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Jelgava 1",addr:"Rūpniecības iela 20d, Jelgava",lat:56.6500,lng:23.7190,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Jelgava 2",addr:"Lietuvas šoseja 72, Jelgava",lat:56.6300,lng:23.6960,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Aizkraukle",addr:"Jaunceltnes iela 16, Aizkraukle",lat:56.6050,lng:25.2540,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Pļaviņas",addr:"Pļaviņu apvedceļš, Aiviekstes pag., Aizkraukles nov.",lat:56.6180,lng:25.7200,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Bauska",addr:"\"Dīči 1\", Bauska",lat:56.4080,lng:24.1960,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Jēkabpils",addr:"Vienības iela 3, Jēkabpils",lat:56.5020,lng:25.8650,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Jēkabpils 2",addr:"Brīvības iela 23, Jēkabpils",lat:56.5000,lng:25.8690,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Jēkabpils 3",addr:"Latgales iela 42, Jēkabpils",lat:56.4980,lng:25.8750,region:"Zemgale"},
+  {brand:"Viada",name:"Viada Jēkabpils 4",addr:"Varoņu iela 6, Jēkabpils",lat:56.5030,lng:25.8720,region:"Zemgale"},
+  // Latgale (20 stations)
+  {brand:"Viada",name:"Viada Ludza",addr:"Latgales iela 22A, Ludza",lat:56.5470,lng:27.7210,region:"Latgale"},
+  {brand:"Viada",name:"Viada Malta",addr:"Mostovaja, Lūznavas pag., Rēzeknes nov.",lat:56.4200,lng:27.1120,region:"Latgale"},
+  {brand:"Viada",name:"Viada Ilūkste",addr:"Pilskalnes pag., Augšdaugavas nov.",lat:55.9830,lng:26.3020,region:"Latgale"},
+  {brand:"Viada",name:"Viada Daugavpils 6",addr:"Vizbuļu iela 8a, Daugavpils",lat:55.8830,lng:26.5080,region:"Latgale"},
+  {brand:"Viada",name:"Viada Daugavpils 5",addr:"Cietokšņa iela 82, Daugavpils",lat:55.8860,lng:26.5070,region:"Latgale"},
+  {brand:"Viada",name:"Viada Rēzekne 3",addr:"\"Tēviņi\", Ozolaines pag., Rēzeknes nov.",lat:56.5100,lng:27.3500,region:"Latgale"},
+  {brand:"Viada",name:"Viada Rēzekne 4",addr:"Griškānu pag., Rēzeknes nov.",lat:56.5150,lng:27.3600,region:"Latgale"},
+  {brand:"Viada",name:"Viada Kārsava",addr:"Šosejas iela 5A, Kārsava",lat:56.7840,lng:27.6890,region:"Latgale"},
+  {brand:"Viada",name:"Viada Audriņi",addr:"\"Eskāda\", Audriņu pag., Rēzeknes nov.",lat:56.5730,lng:27.1250,region:"Latgale"},
+  {brand:"Viada",name:"Viada Preiļi",addr:"Rīgas iela 8, Preiļi",lat:56.2930,lng:26.7280,region:"Latgale"},
+  {brand:"Viada",name:"Viada Krāslava",addr:"Vasarnieku iela 6, Krāslava",lat:55.8970,lng:27.1640,region:"Latgale"},
+  {brand:"Viada",name:"Viada Daugavpils 7",addr:"18. Novembra iela 335D, Daugavpils",lat:55.8650,lng:26.5400,region:"Latgale"},
+  {brand:"Viada",name:"Viada Daugavpils 1",addr:"Nometņu iela 99D, Daugavpils",lat:55.8780,lng:26.5180,region:"Latgale"},
+  {brand:"Viada",name:"Viada Daugavpils 2",addr:"Vidzemes iela 1D, Daugavpils",lat:55.8900,lng:26.5050,region:"Latgale"},
+  {brand:"Viada",name:"Viada Rēzekne 1",addr:"Atbrīvošanas aleja 174A, Rēzekne",lat:56.5060,lng:27.3370,region:"Latgale"},
+  {brand:"Viada",name:"Viada Rēzekne 2",addr:"Daugavpils iela 3, Rēzekne",lat:56.5020,lng:27.3440,region:"Latgale"},
+  {brand:"Viada",name:"Viada Viļāni",addr:"Rīgas iela 52, Viļāni",lat:56.5520,lng:26.9250,region:"Latgale"},
+  {brand:"Viada",name:"Viada Daugavpils 3",addr:"Višķu iela 17L, Daugavpils",lat:55.8710,lng:26.5310,region:"Latgale"},
+  {brand:"Viada",name:"Viada Daugavpils 4",addr:"18. novembra iela 119, Daugavpils",lat:55.8760,lng:26.5220,region:"Latgale"},
+  {brand:"Viada",name:"Viada Balvi",addr:"Stacijas iela 13, Balvi",lat:57.1310,lng:27.2640,region:"Latgale"},
+
+  // ===== KOOL (67 stations) =====
+  // Rīga & Pierīga (19 stations)
+  {brand:"KOOL",name:"KOOL Dārzciems",addr:"Dārzciema iela 127, Rīga",lat:56.9580,lng:24.1960,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Dzelzavas 36",addr:"Dzelzavas iela 36, Rīga",lat:56.9540,lng:24.1750,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Dzelzavas 116",addr:"Dzelzavas iela 116, Rīga",lat:56.9580,lng:24.2050,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Deglava 2",addr:"Deglava iela 77, Rīga",lat:56.9410,lng:24.1830,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Piņķi",addr:"\"Vēja ziedi\", Piņķi",lat:56.9260,lng:23.9280,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Brekši",addr:"\"Brekši\", Jūrmalas šoseja",lat:56.9230,lng:23.8920,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Jaunmārupe",addr:"Mazcenu aleja 20B, Jaunmārupe",lat:56.8720,lng:24.0150,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Tīraines",addr:"Tīraines iela 5B, Rīga",lat:56.9220,lng:24.0350,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Krustabaznīca",addr:"Krustabaznīcas iela 10, Rīga",lat:56.9340,lng:24.1620,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Jaunciema gatve",addr:"Jaunciema gatve 169, Rīga",lat:56.9920,lng:24.1690,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Rumbula",addr:"Latgales iela 446b, Rīga",lat:56.8980,lng:24.1920,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Berģi",addr:"Berģi, Garkalnes pag.",lat:57.0020,lng:24.2780,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Uriekstes iela",addr:"Uriekstes iela 3a, Rīga",lat:56.9620,lng:24.1240,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Piņķi 2",addr:"Piņķi 2, Babītes pag.",lat:56.9190,lng:23.9150,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Jūrmala",addr:"Talsu šoseja 1, Jūrmala",lat:56.9610,lng:23.7930,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Krustpils iela",addr:"Krustpils iela 1, Rīga",lat:56.9350,lng:24.1580,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Vienības Gatve",addr:"Vienības Gatve 17, Rīga",lat:56.9280,lng:24.1230,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Kleistu",addr:"Kleistu iela 37, Rīga",lat:56.9110,lng:24.0280,region:"Riga"},
+  {brand:"KOOL",name:"KOOL Jūrkalnes iela",addr:"Jūrkalnes iela 6, Rīga",lat:56.9330,lng:24.0090,region:"Riga"},
+  // Kurzeme (9 stations)
+  {brand:"KOOL",name:"KOOL Usma",addr:"\"Ausmas\", Usma",lat:57.2050,lng:22.1180,region:"Kurzeme"},
+  {brand:"KOOL",name:"KOOL Vaski",addr:"\"DUS Abava\", Vaski",lat:57.0610,lng:22.6330,region:"Kurzeme"},
+  {brand:"KOOL",name:"KOOL Liepāja 2 (Nīca)",addr:"Klaipēdas Šoseja, Nīca",lat:56.3460,lng:21.0640,region:"Kurzeme"},
+  {brand:"KOOL",name:"KOOL Liepāja 3",addr:"Brīvības iela 174, Liepāja",lat:56.5210,lng:21.0250,region:"Kurzeme"},
+  {brand:"KOOL",name:"KOOL Ventspils 1",addr:"Durbes iela 29, Ventspils",lat:57.3880,lng:21.5650,region:"Kurzeme"},
+  {brand:"KOOL",name:"KOOL Talsi",addr:"Valdgales pag., Talsu nov.",lat:57.2420,lng:22.5490,region:"Kurzeme"},
+  {brand:"KOOL",name:"KOOL Zemīte",addr:"\"Gotika Auto\", Mazblīdene, Blīdenes pag., Saldus nov.",lat:56.7490,lng:22.6010,region:"Kurzeme"},
+  {brand:"KOOL",name:"KOOL Ventspils 2",addr:"Kurzemes iela 75, Ventspils",lat:57.3960,lng:21.5890,region:"Kurzeme"},
+  {brand:"KOOL",name:"KOOL Skrunda",addr:"\"Grantskalni\", Skrunda",lat:56.6780,lng:22.0180,region:"Kurzeme"},
+  // Vidzeme (25 stations, includes some Pieriga-region stations)
+  {brand:"KOOL",name:"KOOL Valmiera",addr:"Rīgas iela 90, Valmiera",lat:57.5310,lng:25.4350,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Līgatne",addr:"\"Vigo\", Augšlīgatne",lat:57.2340,lng:25.0370,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Ādaži",addr:"Rīgas gatve 69, Ādaži",lat:57.0780,lng:24.3250,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Saurieši",addr:"\"Lielceļi\", Saurieši",lat:56.8870,lng:24.2690,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Aloja",addr:"\"Ceļinieki\", Aloja",lat:57.7670,lng:24.8770,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Ainaži",addr:"near Ainaži",lat:57.8630,lng:24.3580,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Lēdmane",addr:"\"Mana puse\", Lēdmane",lat:56.8530,lng:24.8120,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Rauna",addr:"Smiltenes iela 17, Rauna",lat:57.3310,lng:25.6120,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Rūjiena",addr:"Ganību iela 11, Rūjiena",lat:57.8970,lng:25.3270,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Inčukalns",addr:"\"Vairogi\", Inčukalns",lat:57.0990,lng:24.6780,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Taurene",addr:"\"DUS Nēķins\", Taurene",lat:57.1820,lng:25.6790,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Sigulda",addr:"Siguldas nov.",lat:57.1570,lng:24.8560,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Lubāna",addr:"Stacijas iela 16, Lubāna",lat:56.8990,lng:26.7200,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Kocēni",addr:"\"Mežābeles\", Kocēni",lat:57.5210,lng:25.3360,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Ogre",addr:"Daugavpils iela 45, Ogre",lat:56.8100,lng:24.6120,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Valka",addr:"Rūjienas iela 31, Valka",lat:57.7760,lng:26.0060,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Madona",addr:"Saules iela 46, Madona",lat:56.8560,lng:26.2220,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Sauleskalns",addr:"Sauleskalna iela 2, Sauleskalns",lat:57.1050,lng:24.9540,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Alūksne",addr:"Aizupītes, Alsviķu pag.",lat:57.4100,lng:27.0210,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Ērgļi",addr:"Piebalgas 2, Ērgļi",lat:56.8970,lng:25.6440,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Gulbene",addr:"Miera iela 15a, Gulbene",lat:57.1780,lng:26.7590,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Valmiera 2",addr:"Cempu iela 4A, Valmiera",lat:57.5420,lng:25.4190,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Strenči",addr:"Rīgas iela 35, Strenči",lat:57.6260,lng:25.6850,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Cēsis",addr:"near Cēsis",lat:57.3150,lng:25.2780,region:"Vidzeme"},
+  {brand:"KOOL",name:"KOOL Smiltene",addr:"near Smiltene",lat:57.4260,lng:25.9060,region:"Vidzeme"},
+  // Zemgale (5 stations, plus some Pieriga)
+  {brand:"KOOL",name:"KOOL Jelgava",addr:"Lietuvas šoseja 2A, Jelgava",lat:56.6350,lng:23.7120,region:"Zemgale"},
+  {brand:"KOOL",name:"KOOL Bēne",addr:"Jelgavas iela 1B, Bēne",lat:56.4890,lng:23.0530,region:"Zemgale"},
+  {brand:"KOOL",name:"KOOL Grenctāle",addr:"Grenctāles robežkontroles punkts, Brunavas pagasts",lat:56.2270,lng:24.1040,region:"Zemgale"},
+  {brand:"KOOL",name:"KOOL Lielvārde",addr:"Laimdotas iela 23, Lielvārde",lat:56.7210,lng:24.8070,region:"Pieriga"},
+  {brand:"KOOL",name:"KOOL Zvidzāni",addr:"\"Zvidzāni\", Krustpils pag., Jēkabpils nov.",lat:56.5280,lng:26.0110,region:"Zemgale"},
+  {brand:"KOOL",name:"KOOL Ropaži",addr:"Ropažu pag.",lat:56.9750,lng:24.6350,region:"Pieriga"},
+  // Latgale (8 stations)
+  {brand:"KOOL",name:"KOOL Līvāni",addr:"Rīgas iela 1, Līvāni",lat:56.3540,lng:26.1730,region:"Latgale"},
+  {brand:"KOOL",name:"KOOL Dagda",addr:"Daugavpils iela 18, Dagda",lat:56.0940,lng:27.5360,region:"Latgale"},
+  {brand:"KOOL",name:"KOOL Rēzekne 2",addr:"Jupatovkas iela 4, Rēzekne",lat:56.5060,lng:27.3290,region:"Latgale"},
+  {brand:"KOOL",name:"KOOL Varakļāni",addr:"Zemgales iela 35, Varakļāni",lat:56.6070,lng:26.7540,region:"Latgale"},
+  {brand:"KOOL",name:"KOOL Balvi",addr:"Stacijas iela 32, Balvi",lat:57.1270,lng:27.2610,region:"Latgale"},
+  {brand:"KOOL",name:"KOOL Ludza",addr:"Latgales iela 255, Ludza",lat:56.5440,lng:27.7130,region:"Latgale"},
+  {brand:"KOOL",name:"KOOL Daugavpils",addr:"Stacijas iela 66, Daugavpils",lat:55.8750,lng:26.5220,region:"Latgale"},
+  {brand:"KOOL",name:"KOOL Rēzekne 1",addr:"Rīgas iela 47, Rēzekne",lat:56.5110,lng:27.3380,region:"Latgale"},
+  // ===== STRAUJUPĪTE (15 stations) =====
+  // Riga (6 stations)
+  {brand:"Straujupīte",name:"Straujupīte Daugavgrīva",addr:"Daugavgrīvas iela 29, Rīga",lat:56.9870,lng:24.0250,region:"Riga"},
+  {brand:"Straujupīte",name:"Straujupīte Rumbula",addr:"Strengu iela, Rīga",lat:56.8960,lng:24.1880,region:"Riga"},
+  {brand:"Straujupīte",name:"Straujupīte Rīga 1",addr:"Rīga",lat:56.9450,lng:24.1150,region:"Riga"},
+  {brand:"Straujupīte",name:"Straujupīte Rīga 2",addr:"Rīga",lat:56.9380,lng:24.1280,region:"Riga"},
+  {brand:"Straujupīte",name:"Straujupīte Rīga 3",addr:"Rīga",lat:56.9520,lng:24.0980,region:"Riga"},
+  {brand:"Straujupīte",name:"Straujupīte Rīga 4",addr:"Rīga",lat:56.9600,lng:24.1400,region:"Riga"},
+  // Pieriga (1 station)
+  {brand:"Straujupīte",name:"Straujupīte Ādaži",addr:"Ādaži",lat:57.0770,lng:24.3220,region:"Pieriga"},
+  // Vidzeme (5 stations)
+  {brand:"Straujupīte",name:"Straujupīte Inčukalns",addr:"Rīgas-Veclaicenes šoseja 37.km, Inčukalna pag., Siguldas nov.",lat:57.1010,lng:24.6850,region:"Vidzeme"},
+  {brand:"Straujupīte",name:"Straujupīte Bajārkrogs",addr:"Bajārkrogs",lat:57.1680,lng:24.8950,region:"Vidzeme"},
+  {brand:"Straujupīte",name:"Straujupīte Sigulda",addr:"Siguldas nov.",lat:57.1550,lng:24.8530,region:"Vidzeme"},
+  {brand:"Straujupīte",name:"Straujupīte Ieriķi",addr:"Dzirnas, Ieriķi, Drabešu pagasts, Cēsu novads",lat:57.2650,lng:25.2530,region:"Vidzeme"},
+  {brand:"Straujupīte",name:"Straujupīte Valmiera",addr:"Valdeko, Valmiermuiža, Valmieras pagasts",lat:57.5450,lng:25.4030,region:"Vidzeme"},
+  // Kurzeme (1 station)
+  {brand:"Straujupīte",name:"Straujupīte Tukums",addr:"Slampes pagasts, Tukuma novads",lat:56.9380,lng:23.1110,region:"Kurzeme"},
+  // Zemgale (1 station)
+  {brand:"Straujupīte",name:"Straujupīte Bauska",addr:"Rutki, Bauskas novads",lat:56.3940,lng:24.2010,region:"Zemgale"},
+  // Vidzeme (1 station)
+  {brand:"Straujupīte",name:"Straujupīte DUS",addr:"Straujupīte DUS",lat:57.0550,lng:24.7250,region:"Vidzeme"},
+];
+
+// ============ LAND PLOTS ============
+const landPlots = [
+  {
+    id: 1,
+    name: "Lūši",
+    cadastre: "44680010055",
+    area: "8,21 ha",
+    desc: "LIZ un meža īpašums. Tieši A6 šosejas malā, starp Līksnu un Nīcgali (Rīga—Daugavpils).",
+    lat: 56.075359,
+    lng: 26.371779,
+    road: "A6",
+    region: "Latgale"
+  },
+  {
+    id: 2,
+    name: "Dreimaņi",
+    cadastre: "56700060234",
+    area: "10,8 ha",
+    desc: "A6 šosejas malā ~10km no Jēkabpils. Starp īpašumu un šoseju smago auto parkings. Otrā pusē Daugava.",
+    lat: 56.463971,
+    lng: 26.030710,
+    road: "A6",
+    region: "Zemgale"
+  },
+  {
+    id: 3,
+    name: "Lazarēviči",
+    cadastre: "78780030019",
+    area: "1,65 ha",
+    desc: "Tieši Rēzeknes apvedceļa malā.",
+    lat: 56.5230,
+    lng: 27.3720,
+    road: "Rēzeknes apvedceļš",
+    region: "Latgale"
+  },
+  {
+    id: 4,
+    name: "Pazuļi",
+    cadastre: "74480040056 / 74480040057",
+    area: "abās šosejas pusēs",
+    desc: "Īpašums abās šosejas pusēs. Tieši blakus Circle K. Aizkraukles apkārtne.",
+    lat: 56.662332,
+    lng: 24.897206,
+    road: "A6",
+    region: "Zemgale"
+  },
+  {
+    id: 5,
+    name: "Purmales",
+    cadastre: "80640050025",
+    area: "n/a",
+    desc: "Siguldas šosejas vidū. Der DUS — var uztaisīt nobrauktuvi no abiem virzieniem.",
+    lat: 57.0550,
+    lng: 24.6100,
+    road: "A2 (Vidzemes šoseja)",
+    region: "Vidzeme"
+  }
+];
+
+// ============ BRAND CONFIG ============
+const brandColors = {
+  "Circle K": "#e74c3c",
+  "Neste": "#2ecc71",
+  "Virši": "#f39c12",
+  "Viada": "#3498db",
+  "KOOL": "#FF8C00",
+  "Straujupīte": "#8B4513"
+};
+
+const brandActive = { "Circle K": true, "Neste": true, "Virši": true, "Viada": true, "KOOL": true, "Straujupīte": true };
+let markers = [];
+let densityCircles = [];
+let gapCircles = [];
+let currentView = "all";
+let gapFilterBrand = null; // null = show all, or brand name string
+
+// ============ INIT MAP ============
+const map = L.map('map', { zoomControl: false }).setView([56.95, 24.11], 8);
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+// ============ MARKER CREATION ============
+function createMarker(s) {
+  const color = brandColors[s.brand];
+  const icon = L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>`,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+  });
+  const m = L.marker([s.lat, s.lng], { icon }).bindPopup(
+    `<div style="font-family:sans-serif;min-width:180px;">
+      <div style="font-weight:700;font-size:14px;color:${color};margin-bottom:4px;">${s.brand}</div>
+      <div style="font-size:13px;font-weight:600;">${s.name}</div>
+      <div style="font-size:12px;color:#666;margin-top:2px;">${s.addr}</div>
+      <div style="font-size:11px;color:#999;margin-top:4px;">Region: ${s.region}</div>
+    </div>`
+  );
+  m._brand = s.brand;
+  return m;
+}
+
+let landMarkers = [];
+
+function createLandMarker(plot) {
+  const nearbyStations = getNearbyStations(plot.lat, plot.lng, 15);
+  const brandCounts = {};
+  nearbyStations.forEach(s => { brandCounts[s.brand] = (brandCounts[s.brand] || 0) + 1; });
+  const missingBrands = Object.keys(brandColors).filter(b => !brandCounts[b] || brandCounts[b] === 0);
+  const weakBrands = Object.keys(brandColors).filter(b => brandCounts[b] && brandCounts[b] <= 1);
+
+  const brandBreakdown = Object.entries(brandColors).map(([b, c]) =>
+    `<span style="color:${c};font-weight:600;">${b}: ${brandCounts[b] || 0}</span>`
+  ).join(' &nbsp;|&nbsp; ');
+
+  let recommendation = '';
+  if (missingBrands.length > 0) {
+    recommendation += `<div style="margin-top:6px;padding:6px 8px;background:#dcfce7;border-radius:4px;font-size:11px;color:#166534;">
+      <strong>Nav klāt:</strong> ${missingBrands.join(', ')} — lieliska iespēja piedāvāt!</div>`;
+  }
+  if (weakBrands.length > 0) {
+    recommendation += `<div style="margin-top:4px;padding:6px 8px;background:#fef9c3;border-radius:4px;font-size:11px;color:#854d0e;">
+      <strong>Vāja klātbūtne:</strong> ${weakBrands.join(', ')} — var piedāvāt papildu vietu</div>`;
+  }
+
+  const icon = L.divIcon({
+    className: 'land-marker',
+    html: `<div style="position:relative;">
+      <div style="width:28px;height:28px;background:#9333ea;border:3px solid #fff;border-radius:4px;transform:rotate(45deg);box-shadow:0 2px 8px rgba(147,51,234,.5);display:flex;align-items:center;justify-content:center;">
+        <span style="transform:rotate(-45deg);color:#fff;font-weight:700;font-size:12px;">${plot.id}</span>
+      </div>
+      <div style="position:absolute;top:-8px;left:22px;background:#9333ea;color:#fff;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.2);">${plot.name}</div>
+    </div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
+
+  const m = L.marker([plot.lat, plot.lng], { icon, zIndexOffset: 1000 }).bindPopup(
+    `<div style="font-family:sans-serif;min-width:260px;max-width:320px;">
+      <div style="font-weight:700;font-size:16px;color:#9333ea;margin-bottom:2px;">📍 ${plot.name}</div>
+      <div style="font-size:12px;color:#64748b;">Kadastra Nr: ${plot.cadastre}</div>
+      <div style="font-size:12px;color:#64748b;">Platība: ${plot.area} | Ceļš: ${plot.road}</div>
+      <div style="font-size:12px;color:#334155;margin-top:6px;line-height:1.4;">${plot.desc}</div>
+      <hr style="margin:8px 0;border-color:#e2e8f0;">
+      <div style="font-size:12px;font-weight:600;color:#334155;margin-bottom:4px;">DUS 15km rādiusā:</div>
+      <div style="font-size:12px;">${brandBreakdown}</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px;">Kopā: ${nearbyStations.length} stacijas</div>
+      ${recommendation}
+    </div>`, { maxWidth: 350 }
+  );
+  return m;
+}
+
+function getNearbyStations(lat, lng, radiusKm) {
+  return stations.filter(s => getDistKm(lat, lng, s.lat, s.lng) <= radiusKm);
+}
+
+function refreshLandMarkers() {
+  landMarkers.forEach(m => map.removeLayer(m));
+  landMarkers = [];
+  landPlots.forEach(plot => {
+    const m = createLandMarker(plot);
+    m.addTo(map);
+    landMarkers.push(m);
+  });
+}
+
+function refreshMarkers() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  stations.forEach(s => {
+    if (brandActive[s.brand]) {
+      const m = createMarker(s);
+      m.addTo(map);
+      markers.push(m);
+    }
+  });
+}
+
+// ============ DENSITY ANALYSIS ============
+const latvianCities = [
+  { name: "Rīga", lat: 56.9496, lng: 24.1052, pop: 614618, radius: 12000 },
+  { name: "Daugavpils", lat: 55.8747, lng: 26.5364, pop: 82604, radius: 6000 },
+  { name: "Liepāja", lat: 56.5110, lng: 21.0139, pop: 68945, radius: 5500 },
+  { name: "Jelgava", lat: 56.6511, lng: 23.7211, pop: 55972, radius: 5000 },
+  { name: "Jūrmala", lat: 56.9470, lng: 23.8000, pop: 49325, radius: 8000 },
+  { name: "Ventspils", lat: 57.3894, lng: 21.5606, pop: 34377, radius: 4500 },
+  { name: "Rēzekne", lat: 56.5052, lng: 27.3396, pop: 27427, radius: 4000 },
+  { name: "Valmiera", lat: 57.5392, lng: 25.4263, pop: 22971, radius: 3500 },
+  { name: "Jēkabpils", lat: 56.5018, lng: 25.8691, pop: 22237, radius: 3500 },
+  { name: "Ogre", lat: 56.8167, lng: 24.6128, pop: 20537, radius: 3000 },
+  { name: "Tukums", lat: 56.9667, lng: 23.1553, pop: 17583, radius: 3000 },
+  { name: "Sigulda", lat: 57.1539, lng: 24.8558, pop: 11218, radius: 2500 },
+  { name: "Cēsis", lat: 57.3119, lng: 25.2748, pop: 15563, radius: 3000 },
+  { name: "Bauska", lat: 56.4075, lng: 24.1950, pop: 9017, radius: 2500 },
+  { name: "Saldus", lat: 56.6640, lng: 22.4880, pop: 10098, radius: 2500 },
+  { name: "Talsi", lat: 57.2460, lng: 22.5870, pop: 9040, radius: 2500 },
+  { name: "Kuldīga", lat: 56.9680, lng: 21.9680, pop: 10660, radius: 2500 },
+  { name: "Dobele", lat: 56.6230, lng: 23.2810, pop: 8765, radius: 2500 },
+  { name: "Limbaži", lat: 57.5140, lng: 24.7180, pop: 7562, radius: 2000 },
+  { name: "Madona", lat: 56.8520, lng: 26.2170, pop: 7578, radius: 2000 },
+  { name: "Alūksne", lat: 57.4230, lng: 27.0480, pop: 6850, radius: 2000 },
+  { name: "Gulbene", lat: 57.1720, lng: 26.7530, pop: 7250, radius: 2000 },
+  { name: "Krāslava", lat: 55.8970, lng: 27.1640, pop: 8124, radius: 2000 },
+  { name: "Preiļi", lat: 56.2930, lng: 26.7280, pop: 6890, radius: 2000 },
+  { name: "Balvi", lat: 57.1310, lng: 27.2640, pop: 5813, radius: 2000 },
+  { name: "Ludza", lat: 56.5470, lng: 27.7210, pop: 7652, radius: 2000 },
+  { name: "Smiltene", lat: 57.4250, lng: 25.9030, pop: 5186, radius: 2000 },
+  { name: "Valka", lat: 57.7760, lng: 26.0100, pop: 5050, radius: 2000 },
+  { name: "Aizkraukle", lat: 56.6050, lng: 25.2540, pop: 7362, radius: 2000 },
+  // A1 corridor
+  { name: "Saulkrasti", lat: 57.2567, lng: 24.4131, pop: 3200, radius: 2000 },
+  { name: "Salacgrīva", lat: 57.7539, lng: 24.3544, pop: 2800, radius: 2000 },
+  { name: "Ainaži", lat: 57.8624, lng: 24.3568, pop: 1200, radius: 1500 },
+  // A2 corridor
+  { name: "Inčukalns", lat: 57.0990, lng: 24.6880, pop: 2500, radius: 2000 },
+  // A6 corridor
+  { name: "Pļaviņas", lat: 56.6179, lng: 25.7241, pop: 3200, radius: 2000 },
+  { name: "Līvāni", lat: 56.3561, lng: 26.1769, pop: 5200, radius: 2000 },
+  // A7 corridor
+  { name: "Iecava", lat: 56.5985, lng: 24.2010, pop: 4100, radius: 2000 },
+  // A9 corridor - Rīga to Liepāja
+  { name: "Skrunda", lat: 56.6741, lng: 22.0129, pop: 2400, radius: 1500 },
+  // A10 corridor
+  { name: "Kandava", lat: 57.0363, lng: 22.7693, pop: 3200, radius: 2000 },
+  // A3 corridor
+  { name: "Strenči", lat: 57.6260, lng: 25.6850, pop: 1700, radius: 1500 },
+  // A12 corridor
+  { name: "Varakļāni", lat: 56.6070, lng: 26.7540, pop: 1800, radius: 1500 },
+  // Other important points
+  { name: "Olaine", lat: 56.7843, lng: 23.9363, pop: 12500, radius: 3000 },
+  { name: "Ķekava", lat: 56.8260, lng: 24.2310, pop: 8500, radius: 3000 },
+  { name: "Mārupe", lat: 56.8796, lng: 24.0522, pop: 17500, radius: 3000 },
+  { name: "Salaspils", lat: 56.8603, lng: 24.3497, pop: 16600, radius: 3000 },
+  { name: "Ādaži", lat: 57.0753, lng: 24.3217, pop: 12000, radius: 3000 },
+  { name: "Ropaži", lat: 56.9750, lng: 24.6350, pop: 3500, radius: 2000 },
+  { name: "Brocēni", lat: 56.6812, lng: 22.5746, pop: 3100, radius: 1500 },
+  { name: "Auce", lat: 56.4594, lng: 22.9005, pop: 2400, radius: 1500 },
+  { name: "Koknese", lat: 56.6504, lng: 25.4316, pop: 2200, radius: 1500 },
+];
+
+function getStationsNear(lat, lng, radius) {
+  const counts = {};
+  Object.keys(brandColors).forEach(b => counts[b] = 0);
+  stations.forEach(s => {
+    const d = getDistKm(lat, lng, s.lat, s.lng);
+    if (d <= radius / 1000) counts[s.brand]++;
+  });
+  return counts;
+}
+
+function getDistKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function showDensity() {
+  clearOverlays();
+  latvianCities.forEach(city => {
+    const counts = getStationsNear(city.lat, city.lng, city.radius);
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    const density = total / (city.pop / 10000);
+    const color = density > 3 ? '#22c55e' : density > 1.5 ? '#eab308' : '#ef4444';
+    const c = L.circle([city.lat, city.lng], {
+      radius: city.radius,
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.15,
+      weight: 2
+    }).addTo(map);
+    const brandBreakdown = Object.entries(counts).map(([b, n]) =>
+      `<span style="color:${brandColors[b]}">${b}: ${n}</span>`
+    ).join('<br>');
+    c.bindPopup(`<div style="font-family:sans-serif;">
+      <div style="font-weight:700;font-size:15px;">${city.name}</div>
+      <div style="font-size:12px;color:#666;">Pop: ${city.pop.toLocaleString()} | Stations: ${total}</div>
+      <div style="font-size:12px;color:#666;">Density: ${density.toFixed(1)} per 10K people</div>
+      <hr style="margin:6px 0;border-color:#ddd">
+      <div style="font-size:12px;">${brandBreakdown}</div>
+    </div>`);
+    densityCircles.push(c);
+  });
+}
+
+function showGaps() {
+  clearOverlays();
+  const allBrands = Object.keys(brandColors);
+  const brandsToShow = gapFilterBrand ? [gapFilterBrand] : allBrands.filter(b => brandActive[b]);
+
+  latvianCities.forEach(city => {
+    const counts = getStationsNear(city.lat, city.lng, city.radius);
+
+    brandsToShow.forEach(brand => {
+      const myCount = counts[brand];
+      const othersMax = Math.max(...allBrands.filter(b => b !== brand).map(b => counts[b]));
+      const gap = othersMax - myCount;
+
+      if (gap > 0 && myCount < 3) {
+        const angle = allBrands.indexOf(brand) * (2 * Math.PI / allBrands.length);
+        const offset = gapFilterBrand ? 0 : 0.005;
+        const c = L.circle([city.lat + Math.sin(angle) * offset, city.lng + Math.cos(angle) * offset], {
+          radius: gapFilterBrand ? Math.max(2000, city.radius * 0.6) : Math.max(1500, city.radius * 0.5),
+          color: brandColors[brand],
+          fillColor: brandColors[brand],
+          fillOpacity: gapFilterBrand ? 0.35 : 0.25,
+          weight: 2,
+          dashArray: '5,5'
+        }).addTo(map);
+        c.bindPopup('<div style="font-family:sans-serif;">' +
+          '<div style="font-weight:700;font-size:14px;color:' + brandColors[brand] + ';">' + brand + ' — nepilnība</div>' +
+          '<div style="font-size:15px;font-weight:600;">' + city.name + '</div>' +
+          '<div style="font-size:12px;color:#666;margin-top:4px;">' + brand + ': tikai ' + myCount + ' stacija(s)</div>' +
+          '<div style="font-size:12px;color:#666;">Konkurentiem līdz ' + othersMax + ' stacijām</div>' +
+          '<div style="font-size:12px;color:#333;margin-top:4px;font-weight:600;">Iespēja: piedāvāt zemi jaunai ' + brand + ' stacijai</div>' +
+        '</div>');
+        gapCircles.push(c);
+      }
+    });
+  });
+}
+
+function clearOverlays() {
+  densityCircles.forEach(c => map.removeLayer(c));
+  gapCircles.forEach(c => map.removeLayer(c));
+  densityCircles = [];
+  gapCircles = [];
+}
+
+// ============ SIDEBAR RENDERING ============
+function renderBrandToggles() {
+  const container = document.getElementById('brandToggles');
+  container.innerHTML = '';
+  Object.entries(brandColors).forEach(([brand, color]) => {
+    const count = stations.filter(s => s.brand === brand).length;
+    const div = document.createElement('div');
+    div.className = `brand-toggle ${brandActive[brand] ? 'active' : ''}`;
+    div.innerHTML = `
+      <div class="dot" style="background:${color}"></div>
+      <div class="name">${brand}</div>
+      <div class="count">${count}</div>
+      <div class="check">${brandActive[brand] ? '✓' : ''}</div>
+    `;
+    div.onclick = () => {
+      brandActive[brand] = !brandActive[brand];
+      renderBrandToggles();
+      refreshMarkers();
+      if (currentView === 'density') showDensity();
+      if (currentView === 'gaps') showGaps();
+    };
+    container.appendChild(div);
+  });
+  document.getElementById('totalCount').textContent = stations.filter(s => brandActive[s.brand]).length;
+}
+
+function renderBrandStats() {
+  const container = document.getElementById('brandStats');
+  container.innerHTML = '';
+  Object.entries(brandColors).forEach(([brand, color]) => {
+    const brandStations = stations.filter(s => s.brand === brand);
+    const regions = [...new Set(brandStations.map(s => s.region))];
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+    card.innerHTML = `
+      <div class="label" style="color:${color}">${brand}</div>
+      <div class="value">${brandStations.length}</div>
+      <div class="sub">${regions.length} regions covered</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function renderRegionBars() {
+  const container = document.getElementById('regionBars');
+  container.innerHTML = '';
+  const regions = ["Riga", "Pieriga", "Kurzeme", "Zemgale", "Vidzeme", "Latgale"];
+  regions.forEach(region => {
+    const row = document.createElement('div');
+    row.className = 'region-bar';
+    const counts = {};
+    let total = 0;
+    Object.keys(brandColors).forEach(brand => {
+      counts[brand] = stations.filter(s => s.brand === brand && s.region === region).length;
+      total += counts[brand];
+    });
+    const maxTotal = Math.max(...regions.map(r => stations.filter(s => s.region === r).length));
+    let segs = '';
+    Object.entries(brandColors).forEach(([brand, color]) => {
+      const pct = total > 0 ? (counts[brand] / maxTotal * 100) : 0;
+      segs += `<div class="bar-seg" style="width:${pct}%;background:${color};" title="${brand}: ${counts[brand]}"></div>`;
+    });
+    row.innerHTML = `
+      <div class="rname">${region}</div>
+      <div class="bar-wrap">${segs}</div>
+      <div class="rtotal">${total}</div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderGapBrandFilter() {
+  const container = document.getElementById('gapBrandFilter');
+  container.innerHTML = '';
+  // "All" button
+  const allBtn = document.createElement('div');
+  allBtn.style.cssText = 'padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid ' + (gapFilterBrand === null ? '#1e293b' : '#cbd5e1') + ';background:' + (gapFilterBrand === null ? '#1e293b' : '#f8fafc') + ';color:' + (gapFilterBrand === null ? '#fff' : '#64748b');
+  allBtn.textContent = 'Visi';
+  allBtn.onclick = () => { gapFilterBrand = null; renderGapBrandFilter(); renderGapAnalysis(); if (currentView === 'gaps') { clearOverlays(); showGaps(); } };
+  container.appendChild(allBtn);
+  // Brand buttons
+  Object.entries(brandColors).forEach(([brand, color]) => {
+    const btn = document.createElement('div');
+    const isActive = gapFilterBrand === brand;
+    btn.style.cssText = 'padding:4px 12px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid ' + (isActive ? color : '#cbd5e1') + ';background:' + (isActive ? color : '#f8fafc') + ';color:' + (isActive ? '#fff' : '#64748b');
+    btn.textContent = brand;
+    btn.onclick = () => { gapFilterBrand = (gapFilterBrand === brand ? null : brand); renderGapBrandFilter(); renderGapAnalysis(); if (currentView === 'gaps') { clearOverlays(); showGaps(); } };
+    container.appendChild(btn);
+  });
+}
+
+function renderGapAnalysis() {
+  const container = document.getElementById('gapAnalysis');
+  container.innerHTML = '';
+  const allBrands = Object.keys(brandColors);
+  const filterBrands = gapFilterBrand ? [gapFilterBrand] : allBrands;
+  const filterColor = gapFilterBrand ? brandColors[gapFilterBrand] : '#1e293b';
+
+  // Highway data
+  const highways = [
+    { name: "A1", desc: "Rīga—Ainaži", points: [
+      {lat:56.9496,lng:24.1052}, {lat:57.0753,lng:24.3217}, {lat:57.2567,lng:24.4131},
+      {lat:57.5140,lng:24.7180}, {lat:57.7539,lng:24.3544}, {lat:57.8624,lng:24.3568}
+    ]},
+    { name: "A2", desc: "Rīga—Veclaicene", points: [
+      {lat:56.9496,lng:24.1052}, {lat:57.0990,lng:24.6880}, {lat:57.1539,lng:24.8558},
+      {lat:57.3119,lng:25.2748}, {lat:57.4250,lng:25.9030}, {lat:57.1720,lng:26.7530},
+      {lat:57.4230,lng:27.0480}
+    ]},
+    { name: "A3", desc: "Inčukalns—Valka", points: [
+      {lat:57.0990,lng:24.6880}, {lat:57.5392,lng:25.4263}, {lat:57.6260,lng:25.6850},
+      {lat:57.7760,lng:26.0100}
+    ]},
+    { name: "A6", desc: "Rīga—Daugavpils—Krāslava", points: [
+      {lat:56.9496,lng:24.1052}, {lat:56.8167,lng:24.6128}, {lat:56.6050,lng:25.2540},
+      {lat:56.6179,lng:25.7241}, {lat:56.5018,lng:25.8691}, {lat:56.3561,lng:26.1769},
+      {lat:55.8747,lng:26.5364}, {lat:55.8970,lng:27.1640}
+    ]},
+    { name: "A7", desc: "Rīga—Bauska—Grenctāle", points: [
+      {lat:56.9496,lng:24.1052}, {lat:56.7843,lng:23.9363}, {lat:56.5985,lng:24.2010},
+      {lat:56.4075,lng:24.1950}
+    ]},
+    { name: "A8", desc: "Rīga—Jelgava—Meitene", points: [
+      {lat:56.9496,lng:24.1052}, {lat:56.7843,lng:23.9363}, {lat:56.6511,lng:23.7211}
+    ]},
+    { name: "A9", desc: "Rīga—Liepāja", points: [
+      {lat:56.9496,lng:24.1052}, {lat:56.9667,lng:23.1553}, {lat:56.6640,lng:22.4880},
+      {lat:56.6741,lng:22.0129}, {lat:56.5110,lng:21.0139}
+    ]},
+    { name: "A10", desc: "Rīga—Ventspils", points: [
+      {lat:56.9496,lng:24.1052}, {lat:56.9667,lng:23.1553}, {lat:57.0363,lng:22.7693},
+      {lat:56.9680,lng:21.9680}, {lat:57.3894,lng:21.5606}
+    ]},
+    { name: "A12", desc: "Jēkabpils—Rēzekne", points: [
+      {lat:56.5018,lng:25.8691}, {lat:56.8520,lng:26.2170}, {lat:56.6070,lng:26.7540},
+      {lat:56.5052,lng:27.3396}
+    ]}
+  ];
+
+  // SECTION 1: Highway Coverage for selected brand(s)
+  let hwHtml = '<div style="margin-bottom:16px;"><h3 style="font-size:15px;font-weight:700;color:' + filterColor + ';margin:0 0 8px;">' + (gapFilterBrand ? gapFilterBrand + ' — Autoceļu pārklājums' : 'Autoceļu pārklājums') + '</h3>';
+
+  highways.forEach(hw => {
+    if (gapFilterBrand) {
+      // Single brand mode: show coverage % for this brand along the highway
+      let coveredPoints = 0;
+      let uncoveredNames = [];
+      hw.points.forEach((pt, i) => {
+        const nearby = stations.filter(s => s.brand === gapFilterBrand && getDistKm(pt.lat, pt.lng, s.lat, s.lng) <= 8);
+        if (nearby.length > 0) { coveredPoints++; }
+        else {
+          const nearest = latvianCities.reduce((best, c) => {
+            const d = getDistKm(pt.lat, pt.lng, c.lat, c.lng);
+            return d < best.d ? {name: c.name, d} : best;
+          }, {name:'?', d:999});
+          if (nearest.d < 15) uncoveredNames.push(nearest.name);
+        }
+      });
+      const pct = Math.round(coveredPoints / hw.points.length * 100);
+      const barColor = pct > 70 ? '#22c55e' : pct > 40 ? '#f59e0b' : '#ef4444';
+      const uniqueUncovered = [...new Set(uncoveredNames)];
+
+      hwHtml += '<div style="margin:6px 0;padding:8px;background:#f8fafc;border-radius:6px;border-left:3px solid ' + barColor + ';">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="font-weight:700;font-size:13px;">' + hw.name + '</span>' +
+          '<span style="font-size:12px;font-weight:700;color:' + barColor + ';">' + pct + '%</span>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#64748b;">' + hw.desc + '</div>' +
+        '<div style="background:#e2e8f0;border-radius:3px;height:8px;margin:4px 0;">' +
+          '<div style="background:' + brandColors[gapFilterBrand] + ';height:100%;border-radius:3px;width:' + pct + '%;opacity:0.8;"></div>' +
+        '</div>' +
+        (uniqueUncovered.length > 0 ? '<div style="font-size:11px;color:#ef4444;margin-top:2px;">Nav klāt pie: <b>' + uniqueUncovered.join(', ') + '</b></div>' : '<div style="font-size:11px;color:#22c55e;margin-top:2px;">&#x2713; Labi pārklāts</div>') +
+      '</div>';
+    } else {
+      // All brands mode: show average
+      let brandCoverage = {};
+      allBrands.forEach(b => {
+        let cp = 0;
+        hw.points.forEach(pt => {
+          if (stations.filter(s => s.brand === b && getDistKm(pt.lat, pt.lng, s.lat, s.lng) <= 8).length > 0) cp++;
+        });
+        brandCoverage[b] = Math.round(cp / hw.points.length * 100);
+      });
+      const worstBrands = Object.entries(brandCoverage)
+        .filter(([b, pct]) => pct < 50)
+        .sort((a, b) => a[1] - b[1])
+        .map(([b, pct]) => '<span style="color:' + brandColors[b] + ';font-weight:600;">' + b + ' ' + pct + '%</span>');
+      const avgCoverage = Math.round(Object.values(brandCoverage).reduce((a,b)=>a+b,0) / allBrands.length);
+      const barColor = avgCoverage > 70 ? '#22c55e' : avgCoverage > 40 ? '#f59e0b' : '#ef4444';
+
+      hwHtml += '<div style="margin:6px 0;padding:8px;background:#f8fafc;border-radius:6px;border-left:3px solid ' + barColor + ';">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<span style="font-weight:700;font-size:13px;">' + hw.name + '</span>' +
+          '<span style="font-size:11px;color:#64748b;">' + hw.desc + '</span>' +
+        '</div>' +
+        '<div style="background:#e2e8f0;border-radius:3px;height:6px;margin:4px 0;">' +
+          '<div style="background:' + barColor + ';height:100%;border-radius:3px;width:' + avgCoverage + '%;"></div>' +
+        '</div>' +
+        (worstBrands.length > 0 ? '<div style="font-size:11px;color:#64748b;margin-top:2px;">Trūkst: ' + worstBrands.join(', ') + '</div>' : '<div style="font-size:11px;color:#22c55e;margin-top:2px;">&#x2713; Labi pārklāts</div>') +
+      '</div>';
+    }
+  });
+  hwHtml += '</div>';
+  container.innerHTML += hwHtml;
+
+  // SECTION 2: Gap locations for selected brand(s)
+  const allGaps = [];
+  latvianCities.forEach(city => {
+    const counts = getStationsNear(city.lat, city.lng, city.radius);
+    filterBrands.forEach(brand => {
+      const myCount = counts[brand];
+      const othersMax = Math.max(...allBrands.filter(b => b !== brand).map(b => counts[b]));
+      const gap = othersMax - myCount;
+      if (gap > 0 && myCount < 3) {
+        allGaps.push({
+          brand, city: city.name, myCount, othersMax, gap, pop: city.pop,
+          competitors: allBrands.filter(b => b !== brand && counts[b] > myCount).map(b => b + ' (' + counts[b] + ')')
+        });
+      }
+    });
+  });
+  allGaps.sort((a, b) => b.gap - a.gap || b.pop - a.pop);
+  const topGaps = allGaps.slice(0, gapFilterBrand ? 30 : 15);
+
+  let gapHtml = '<div><h3 style="font-size:15px;font-weight:700;color:' + filterColor + ';margin:0 0 8px;">' + (gapFilterBrand ? gapFilterBrand + ' — Kur trūkst staciju (' + topGaps.length + ')' : 'Lielākās nepilnības') + '</h3>';
+
+  if (topGaps.length === 0) {
+    gapHtml += '<p style="font-size:13px;color:#64748b;">Nav atrastu nepilnību šim brendam.</p>';
+  }
+
+  topGaps.forEach(g => {
+    const cityData = latvianCities.find(c => c.name === g.city);
+    const cityLat = cityData ? cityData.lat : 56.95;
+    const cityLng = cityData ? cityData.lng : 24.1;
+    gapHtml += '<div class="gap-item" style="border-color:' + brandColors[g.brand] + ';cursor:pointer;" onclick="map.setView([' + cityLat + ',' + cityLng + '], 13)">' +
+      '<h3 style="color:' + brandColors[g.brand] + ';font-size:14px;margin:0 0 4px;">' + g.city + '</h3>' +
+      '<p style="margin:0;font-size:12px;color:#475569;">' + g.brand + ': tikai <b>' + g.myCount + '</b> stacija(s), konkurentiem līdz <b>' + g.othersMax + '</b></p>' +
+      '<p style="margin:2px 0 0;font-size:11px;color:#94a3b8;">Iedzīvotāji: ' + g.pop.toLocaleString() + '</p>' +
+      '<div class="tags" style="margin-top:4px;">' +
+        '<span class="tag opportunity">Iespēja</span>' +
+        '<span class="tag" style="font-size:11px;">' + g.competitors.join(', ') + '</span>' +
+      '</div>' +
+    '</div>';
+  });
+  gapHtml += '</div>';
+  container.innerHTML += gapHtml;
+}
+
+// ============ VIEW SWITCHING ============
+function setView(view) {
+  currentView = view;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  clearOverlays();
+  const info = document.getElementById('viewInfo');
+  if (view === 'all') {
+    info.textContent = 'Showing all gas stations across Latvia. Click markers for details. Toggle brands above.';
+  } else if (view === 'density') {
+    info.textContent = 'Station density per 10K population. Green = well-served, Yellow = moderate, Red = underserved. Click circles for breakdown.';
+    showDensity();
+  } else if (view === 'gaps') {
+    info.textContent = 'Pārtrauktie apļi rāda vietas, kur brendam ir mazāk staciju nekā konkurentiem — labākās iespējas zemes pārdošanai. Noklikšķiniet, lai skatītu detaļas.';
+    showGaps();
+  }
+}
+
+// ============ LAND PLOTS SIDEBAR ============
+function renderLandPlots() {
+  const container = document.getElementById('landPlotsList');
+  container.innerHTML = '';
+  landPlots.forEach(plot => {
+    const nearby = getNearbyStations(plot.lat, plot.lng, 15);
+    const brandCounts = {};
+    nearby.forEach(s => { brandCounts[s.brand] = (brandCounts[s.brand] || 0) + 1; });
+    const missingBrands = Object.keys(brandColors).filter(b => !brandCounts[b]);
+
+    const div = document.createElement('div');
+    div.className = 'gap-item';
+    div.style.borderColor = '#9333ea';
+    div.style.cursor = 'pointer';
+
+    let chips = Object.entries(brandColors).map(([b, c]) =>
+      `<span class="tag" style="background:${brandCounts[b] ? '#e2e8f0' : '#fecaca'};color:${brandCounts[b] ? '#334155' : '#991b1b'};">${b}: ${brandCounts[b] || 0}</span>`
+    ).join('');
+
+    if (missingBrands.length > 0) {
+      chips += `<span class="tag opportunity">Piedāvāt: ${missingBrands.join(', ')}</span>`;
+    }
+
+    div.innerHTML = `
+      <h3 style="color:#9333ea;">${plot.id}. ${plot.name}</h3>
+      <p>${plot.area} | ${plot.road} | ${plot.region}<br>${plot.desc}</p>
+      <div class="tags">${chips}</div>
+    `;
+    div.onclick = () => map.setView([plot.lat, plot.lng], 14);
+    container.appendChild(div);
+  });
+}
+
+// ============ INITIALIZE ============
+renderBrandToggles();
+renderBrandStats();
+renderRegionBars();
+renderGapBrandFilter();
+renderGapAnalysis();
+renderLandPlots();
+refreshMarkers();
+refreshLandMarkers();
+</script>
+</body>
+</html>
